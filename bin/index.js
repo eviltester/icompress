@@ -241,6 +241,7 @@ function getImageHeaders(url) {
             response.body.pipe(fileStream);
             response.body.on("error", reject);
             fileStream.on("finish", resolve);
+            resolve(img)
         }).
         catch((error)=>{
                         console.error('stderr:', error.stderr);
@@ -357,6 +358,9 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
             Errors: ${errorProcessingImages.length}
             `);
 
+        console.log(imagesToLeaveAlone);
+        console.log(errorProcessingImages);
+
         process.exit(0); // OK I Quit
     }
 
@@ -374,12 +378,12 @@ const downloadImagesQInterval = setInterval(()=>{
         then(()=>{
             console.log("downloaded ");
             console.log(imageToDownload);
-            imagesToCompress.push(image);
+            imagesToCompress.push(imageToDownload);
             downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
         }).catch((error)=>
             {console.log("Error downloading ");
              console.log(error);
-             errorProcessingImages.push(image);
+             errorProcessingImages.push(imageToDownload);
              downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
             });
     }
@@ -404,14 +408,18 @@ const compressImagesQInterval = setInterval(()=>{
             execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
                 console.log("compressed " +imageToCompress);
                 compressedImages.push(imageToCompress);
-                compressingImages.splice(compressingImages.indexOf(imagesToCompress),1);
+                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
             }).catch(()=>{
                 console.log("error here");
-                errorProcessingImages.push(image);
-                compressingImages.splice(compressingImages.indexOf(imageToDownload),1);
+                errorProcessingImages.push(imageToCompress);
+                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
             })
         })
-        .catch(()=>{console.log("Error During Processing")});
+        .catch(()=>{
+            console.log("Error During Processing");
+            errorProcessingImages.push(imageToCompress);
+            compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+        });
     }
 },500);
 
