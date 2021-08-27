@@ -20,6 +20,9 @@ const { JSDOM } = jsdom;
 const Url = require('url').URL;
 
 
+// todo: create folder for the url then image folders below that for each image
+// todo: tidy the code
+
 
 const imagesToProcess = []; // found images
 const imagesToDownload = []; // images which are big enough to process and download them
