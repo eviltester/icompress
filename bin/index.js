@@ -5,8 +5,11 @@ const util = require('util');
 //const exec = util.promisify(require('child_process').exec);
 const exec = require('child_process').exec;
 
-const fs = require('fs');
-const path = require('path');
+const FS = require('fs');
+const Path = require('path');
+
+// https://www.npmjs.com/package/animated-gif-detector
+const AnimatedGifDetector = require('animated-gif-detector');
 
 const fetch = require('isomorphic-fetch');
 
@@ -17,11 +20,8 @@ const { JSDOM } = jsdom;
 const Url = require('url').URL;
 
 
-// todo: test for animated gif and if so feed it through ffmpeg
-// todo: if it is not animated then just use imagemagick
 
-
- const imagesToProcess = []; // found images
+const imagesToProcess = []; // found images
 const imagesToDownload = []; // images which are big enough to process and download them
 const downloadingImages = []; // images we are currently downloading
 const imagesToCompress = []; // images which we need to compress
@@ -40,7 +40,7 @@ const options = yargs
 
  if(options.inputname){
 
-    const parsed = path.parse(options.inputname);
+    const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;    
     imagesToCompress.push({src:"local/"+options.inputname,fileName:options.inputname, path:"."});
@@ -167,11 +167,12 @@ const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8
 
 
 image:
-   src
-   contentLength
-   type
-   path
-   fileName
+   src // download url from src attribute
+   contentLength // header reported by server
+   type // type reported by server
+   dir  // directory plan to write to
+   fileName // planned filename to use
+   fullPath // actual file path for the file
 
 
 */
@@ -197,6 +198,7 @@ function getImageHeaders(url) {
             resolve(img);
         }).
         catch((error)=>{
+                        img.errorReport = error;
                         console.error('stderr:', error.stderr);
                         reject(error);
                     });
@@ -207,11 +209,11 @@ function getImageHeaders(url) {
 
 
   function createDir(dir){
-    console.log("creating");
+    console.log("creating: " +dir);
       console.log(dir)
     try {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
+        if (!FS.existsSync(dir)) {
+            FS.mkdirSync(dir);
         }
     } catch (err) {
         console.error(err);
@@ -224,7 +226,7 @@ function getImageHeaders(url) {
     const pathParts = new Url(img.src).pathname.split('/');
     const dir = pathParts.join('_');
     const fileName = pathParts[pathParts.length-1];
-    img.path = dir;
+    img.dir = dir;
     img.fileName = fileName;
 
     console.log("downloading");
@@ -234,8 +236,9 @@ function getImageHeaders(url) {
     createDir(dir);
 
     return new Promise((resolve, reject) => {
-        const path = dir + "/" + fileName;
-        const fileStream = fs.createWriteStream(path);
+        const downloadTo = dir + "/" + fileName;
+        const fileStream = FS.createWriteStream(downloadTo);
+        img.fullFilePath = downloadTo;
         fetch(img.src).
         then((response)=>{
             response.body.pipe(fileStream);
@@ -328,15 +331,19 @@ function filterImagesAndAddToDownloadQueue(processQ, downloadQ, ignoreQ, maxK){
 }
 
 
-const reportOnImageQsInterval = setInterval(()=>{console.log(
-`To Process: ${imagesToProcess.length}
+const reportOnQueues = function(){
+    console.log(
+        `To Process: ${imagesToProcess.length}
 To Download: ${imagesToDownload.length}
 Downloading: ${downloadingImages.length}
 To Compress: ${imagesToCompress.length}
 Compressing: ${compressingImages.length}
 Done: ${compressedImages.length}
 Ignored: ${imagesToLeaveAlone.length}
-Errors: ${errorProcessingImages.length}`)},1000);
+Errors: ${errorProcessingImages.length}`);
+}
+
+const reportOnImageQsInterval = setInterval(()=>{reportOnQueues},1000);
 
 
 const quitWhenNothingToDoInterval = setInterval(()=>{
@@ -347,19 +354,12 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
     }
 
     if(shouldIQuit){
-        console.log(
-            `            To Process: ${imagesToProcess.length}
-            To Download: ${imagesToDownload.length}
-            Downloading: ${downloadingImages.length}
-            To Compress: ${imagesToCompress.length}
-            Compressing: ${compressingImages.length}
-            Done: ${compressedImages.length}
-            Ignored: ${imagesToLeaveAlone.length}
-            Errors: ${errorProcessingImages.length}
-            `);
+        reportOnQueues();
 
+        console.log("Ignored Images");  // todo add an ignore reason to the image
         console.log(imagesToLeaveAlone);
-        console.log(errorProcessingImages);
+        console.log("Error Processing Images")
+        console.log(errorProcessingImages); // todo add an error reason to the image
 
         process.exit(0); // OK I Quit
     }
@@ -383,6 +383,7 @@ const downloadImagesQInterval = setInterval(()=>{
         }).catch((error)=>
             {console.log("Error downloading ");
              console.log(error);
+             imageToDownload.errorReport = error;
              errorProcessingImages.push(imageToDownload);
              downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
             });
@@ -397,38 +398,53 @@ const compressImagesQInterval = setInterval(()=>{
         console.log("about to compress");
         console.log(imageToCompress);
         compressingImages.pop(imageToCompress);
-        inputFileName = "./" + imageToCompress.path + "/" + imageToCompress.fileName;
-        outputFileName = "./" + imageToCompress.path + "/" + "ffmpeged-" +imageToCompress.fileName;
-        compressedFileName = "./" + imageToCompress.path + "/" + "compressed-" +imageToCompress.fileName;
 
-        createDir(imageToCompress.path);
+        writtenImagePath = Path.parse(imageToCompress.fullFilePath);
+        pathPrefix = "./";
 
-        execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
-        .then((result)=>{
-            execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
+        // possibly use Path.relative() with "./" or preocess.cwd()
+        inputFileName = pathPrefix + imageToCompress.fullFilePath;
+        outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
+        compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
+
+        createDir(pathPrefix + writtenImagePath.dir);
+
+        if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
+            execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
+            .then((result)=>{
+                execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
+                    console.log("compressed " +imageToCompress);
+                    compressedImages.push(imageToCompress);
+                    compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+                }).catch((error)=>{
+                    console.log("error here");
+                    imageToCompress.errorReport = error;
+                    errorProcessingImages.push(imageToCompress);
+                    compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+                })
+            })
+            .catch((error)=>{
+                console.log("Error During Processing");
+                imageToCompress.errorReport = error;
+                errorProcessingImages.push(imageToCompress);
+                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+            });
+        }else{
+            // just apply image magic
+            execParas(imagemagick, {inputFileName: inputFileName, outputFileName: compressedFileName}).then((result)=>{
                 console.log("compressed " +imageToCompress);
                 compressedImages.push(imageToCompress);
                 compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            }).catch(()=>{
+            }).catch((error)=>{
                 console.log("error here");
+                imageToCompress.errorReport = error;
                 errorProcessingImages.push(imageToCompress);
                 compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
             })
-        })
-        .catch(()=>{
-            console.log("Error During Processing");
-            errorProcessingImages.push(imageToCompress);
-            compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-        });
+        }
     }
 },500);
 
-// from https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
-// hack to run async code synchronously
-// (async () => {
-//     const response = await fetch('https://wordpress.org/wp-json');
-//     const json = await response.json();
-//     console.log(JSON.stringify(json));
-//   })()
+
 
 
