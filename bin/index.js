@@ -150,8 +150,7 @@ function execParas(commandLineTemplate, params) {
 
 // console.log("Executing:");
 
-const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
-const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
+
 
 
 
@@ -393,6 +392,49 @@ const downloadImagesQInterval = setInterval(()=>{
     }
 },500)
 
+const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
+
+function ffmpegCompress(imageToCompress, inputFileName, outputFileName) {
+    return new Promise((resolve, reject)=>{
+        execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
+            .then((result)=>{
+                console.log("compressed " + imageToCompress);
+                imageToCompress.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
+                resolve(imageToCompress)
+            }).catch((error)=> {
+            console.log("error during ffmpeg compress");
+            imageToCompress.errorReport = error;
+            reject(imageToCompress);
+        })
+    });
+}
+
+const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
+
+function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
+    return new Promise((resolve, reject)=>{
+        execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
+            .then((result)=>{
+                console.log("compressed " + imageToCompress);
+                imageToCompress.imagemagick = {inputFile: inputFileName, outputFile: outputFileName};
+                resolve(imageToCompress);
+            }).catch((error)=> {
+                console.log("error during imagemagick compress");
+                imageToCompress.errorReport = error;
+                reject(imageToCompress);
+        })
+    });
+}
+
+const moveFromQToQ = async (imageToMove, fromQ, toQ)=>{
+    try {
+        toQ.push(imageToMove);
+        fromQ.splice(fromQ.indexOf(imageToMove), 1);
+    }catch(error){
+        console.log("failure to move " + error);
+        throw imageToMove;
+    }
+};
 
 const compressImagesQInterval = setInterval(()=>{
 
@@ -415,16 +457,19 @@ const compressImagesQInterval = setInterval(()=>{
         if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
             execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
-                execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
-                    console.log("compressed " +imageToCompress);
-                    compressedImages.push(imageToCompress);
-                    compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-                }).catch((error)=>{
-                    console.log("error here");
-                    imageToCompress.errorReport = error;
-                    errorProcessingImages.push(imageToCompress);
-                    compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-                })
+                imageMagickCompress(imageToCompress, outputFileName, compressedFileName).
+                then(moveFromQToQ(imageToCompress, compressingImages, compressedImages)).
+                catch(moveFromQToQ(imageToCompress, compressingImages, errorProcessingImages));
+                // execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
+                //     console.log("compressed " +imageToCompress);
+                //     compressedImages.push(imageToCompress);
+                //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+                // }).catch((error)=>{
+                //     console.log("error here");
+                //     imageToCompress.errorReport = error;
+                //     errorProcessingImages.push(imageToCompress);
+                //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+                // })
             })
             .catch((error)=>{
                 console.log("Error During Processing");
@@ -434,16 +479,20 @@ const compressImagesQInterval = setInterval(()=>{
             });
         }else{
             // just apply image magic
-            execParas(imagemagick, {inputFileName: inputFileName, outputFileName: compressedFileName}).then((result)=>{
-                console.log("compressed " +imageToCompress);
-                compressedImages.push(imageToCompress);
-                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            }).catch((error)=>{
-                console.log("error here");
-                imageToCompress.errorReport = error;
-                errorProcessingImages.push(imageToCompress);
-                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            })
+            imageMagickCompress(imageToCompress, inputFileName, compressedFileName).
+            then(moveFromQToQ(imageToCompress, compressingImages, compressedImages)).
+            catch(moveFromQToQ(imageToCompress, compressingImages, errorProcessingImages));
+
+            // execParas(imagemagick, {inputFileName: inputFileName, outputFileName: compressedFileName}).then((result)=>{
+            //     console.log("compressed " +imageToCompress);
+            //     compressedImages.push(imageToCompress);
+            //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+            // }).catch((error)=>{
+            //     console.log("error here");
+            //     imageToCompress.errorReport = error;
+            //     errorProcessingImages.push(imageToCompress);
+            //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
+            // })
         }
     }
 },500);
