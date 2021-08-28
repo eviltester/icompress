@@ -23,7 +23,7 @@ const Url = require('url').URL;
 // todo: create folder for the url then image folders below that for each image
 // todo: tidy the code
 
-
+// todo: this could be a queues object
 const imagesToProcess = []; // found images
 const imagesToDownload = []; // images which are big enough to process and download them
 const downloadingImages = []; // images we are currently downloading
@@ -90,78 +90,9 @@ function execParas(commandLineTemplate, params) {
     );
   }
 
-// todo this could be an execWithParams promise
-// function ffmpegCompress(inputFileName, outputFileName) {
-//     return new Promise((resolve, reject) => {
 
-//         const ffmpeg = `ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}`;
-//         console.log(ffmpeg);
-
-//         execPromise(ffmpeg).
-//         then((result)=>{console.log('stdout:', result);
-//                         resolve(result)})
-//         .catch((error)=>{
-//             console.error('stderr:', error);
-//             reject(error)
-//         });
-//     }
-//     );
-//   }
-
-
-// function imageMagickCompress(inputFileName, outputFileName) {
-//     return new Promise((resolve, reject) => {
-//         const imagemagick = `magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}`;
-//         console.log(imagemagick);
-
-//         execPromise(imagemagick).
-//         then((result)=>{
-//             console.log('imagemagick stdout:', result);
-//             resolve(result);
-//             })
-//         .catch((error)=>{
-//             console.error('stderr:', error.stderr);
-//             reject(error);
-//         });
-//     });
-//   }
-
-// old code to process the input file
-//
-// const dirname = path.parse(options.inputname).name;
-// const dir = "./" + dirname;
-
-// // wrap this in a promise so that we can chain creating dirs with executing apps
-// console.log("outputing files to: " + dir);
-// try {
-//     if (!fs.existsSync(dir)) {
-//         fs.mkdirSync(dir);
-//     }
-// } catch (err) {
-//     console.error(err);
-// }
-
-// const outputDir = dir + "/";
-// const inputFileToFFmpeg = `${options.inputname}`;
-// const outputFileFromFFmpeg = `${outputDir}ffmpeg-output-${options.inputname}`;
-// const outputFileFromImageMagick = `${outputDir}imgmagic-output-${options.inputname}`;
-
-// console.log("Executing:");
-
-
-
-
-
-// ffmpegCompress(inputFileToFFmpeg, outputFileFromFFmpeg)
-// .then((result)=>{imageMagickCompress(outputFileFromFFmpeg, outputFileFromImageMagick)})
-// .catch((()=>{console.log("Error During Processing")}));
-
-// execParas(ffmpeg, {inputFileName: inputFileToFFmpeg, outputFileName: outputFileFromFFmpeg})
-// .then((result)=>{execParas(imagemagick, {inputFileName: outputFileFromFFmpeg, outputFileName: outputFileFromImageMagick})})
-// .catch((()=>{console.log("Error During Processing")}));
-
-
-
+// TODO: start making image an object/class
+// TODO: maintain an list of historical states in the image as well as a current state
 
 /*
 
@@ -287,7 +218,7 @@ console.log(options)
 if(options.pageurl){
 
     console.log(options.pageurl)
-    // todo build a queue
+    // todo build a queue of urls by scanning a site
     getDomFromUrl(options.pageurl).
     then((dom)=>{
         const imgs=dom.window.document.querySelectorAll("img");
@@ -403,8 +334,6 @@ const downloadImagesQInterval = setInterval(()=>{
     }
     imageToDownload.state="ABOUT_TO_DOWNLOAD";
 
-//    if(imagesToDownload.length>0){
-        //imageToDownload = imagesToDownload.shift();
         imagesToDownload.splice(imagesToDownload.indexOf(imageToDownload), 1);
         downloadingImages.pop(imageToDownload);
         console.log("about to download");
@@ -438,11 +367,6 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
                 imageToFFmpeg.state="COMPRESSED_VIA_FFMPEG";
                 console.log(imageToFFmpeg);
                 imageToFFmpeg.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
-
-                // need to delay otherwise the file is not ready for processing
-                // todo: find a better way to determine if file is ready
-                console.log("waiting for file to be ready " + inputFileName);
-                //setTimeout(() =>{ console.log("file is ready " + imageToFFmpeg.src); resolve(imageToFFmpeg)}, 2000);
                 resolve(imageToFFmpeg)
             }).catch((error)=> {
             console.log("error during ffmpeg compress");
@@ -502,8 +426,6 @@ const processCompressImagesQ = ()=>{
     }
     imageToCompress.state="ABOUT_TO_COMPRESS";
 
-    // if(imagesToCompress.length>0){
-        //imageToCompress = imagesToCompress.shift();
         imagesToCompress.splice(imagesToCompress.indexOf(imageToCompress), 1);
         compressingImages.pop(imageToCompress);
         console.log("about to compress");
