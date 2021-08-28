@@ -28,7 +28,6 @@ const Url = require('url').URL;
 /*
 
     BUGS:
-        foldername for page starts and ends with _ - remove these
 
     TODOs:
     - NEXT
@@ -443,7 +442,7 @@ function createFolderStructureForImage(image, root) {
             const urlToParse = image.foundOnPage;
 
             // create a page folder
-            const pathParts = new Url(urlToParse).pathname.split('/');
+            const pathParts = new Url(urlToParse).pathname.split('/').filter(item => item !="");
             const dir = pathParts.join('_');
             image.dir = dir;
 
