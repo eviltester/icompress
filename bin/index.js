@@ -26,9 +26,12 @@ const Url = require('url').URL;
 
 
 /*
+
+    BUGS:
+        foldername for page starts and ends with _ - remove these
+
     TODOs:
     - NEXT
-        - change generated folder structure - site/url/imageName/versioNofImagefile.gif
         - output an image.json into each folder to show the state, src url etc.
         - output a report of the final state
     - split code into modules and classes
@@ -146,11 +149,14 @@ const options = yargs
  .argv;
 
  if(options.inputname){
-    //todo: need to update this to handle the state/queue system we added
     const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;    
-    imagesToCompress.push({src:"local/"+options.inputname,fileName:options.inputname, path:"."});
+    imagesToCompress.push({
+        src:"local/"+options.inputname,
+        fullFilePath:options.inputname,
+        state:ImageStates.READY_TO_COMPRESS
+    });
  }
 
 
@@ -565,7 +571,7 @@ const processCompressImagesQ = ()=>{
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
 
-    createDir(pathPrefix + writtenImagePath.dir);
+    //createDir(pathPrefix + writtenImagePath.dir);
 
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
 
