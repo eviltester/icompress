@@ -372,8 +372,7 @@ const downloadImagesQInterval = setInterval(()=>{
     }
     setImageState(imageToDownload, ImageStates.ABOUT_TO_DOWNLOAD);
 
-        imagesToDownload.splice(imagesToDownload.indexOf(imageToDownload), 1);
-        downloadingImages.pop(imageToDownload);
+    moveFromQToQ(imageToDownload, imagesToDownload, downloadingImages);
 
         console.log(imagesToDownload);
         downloadFile(imageToDownload).
@@ -383,15 +382,14 @@ const downloadImagesQInterval = setInterval(()=>{
 
             setImageState(imageToDownload, ImageStates.READY_TO_COMPRESS);
 
-            imagesToCompress.push(imageToDownload);
-            downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
+            moveFromQToQ(imageToDownload, downloadingImages, imagesToCompress);
+
         }).catch((error)=>
             {
             setImageState(imageToDownload, ImageStates.ERROR_DOWNLOADING);
              console.log(error);
              imageToDownload.errorReport = error;
-             errorProcessingImages.push(imageToDownload);
-             downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
+             moveFromQToQ(imageToDownload, downloadingImages, errorProcessingImages);
             });
     //}
 },500)
@@ -446,15 +444,19 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
 /*
     async is basically a promise where the resolve is the return value and the reject is the exception
  */
-const moveFromQToQ = async (imageToMove, fromQ, toQ)=>{
-    try {
-        toQ.push(imageToMove);
-        fromQ.splice(fromQ.indexOf(imageToMove), 1);
-    }catch(error){
-        console.log("failure to move " + error);
-        throw imageToMove;
-    }
-};
+// const moveFromQToQ = async (imageToMove, fromQ, toQ)=>{
+//     try {
+//         toQ.push(imageToMove);
+//         fromQ.splice(fromQ.indexOf(imageToMove), 1);
+//     }catch(error){
+//         console.log("failure to move " + error);
+//         throw imageToMove;
+//     }
+// };
+const moveFromQToQ = (imageToMove, fromQ, toQ)=>{
+    toQ.push(imageToMove);
+    fromQ.splice(fromQ.indexOf(imageToMove), 1);
+}
 
 const processCompressImagesQ = ()=>{
 
@@ -465,8 +467,7 @@ const processCompressImagesQ = ()=>{
     setImageState(imageToCompress, ImageStates.ABOUT_TO_COMPRESS);
     console.log(imageToCompress);
 
-    imagesToCompress.splice(imagesToCompress.indexOf(imageToCompress), 1);
-    compressingImages.pop(imageToCompress);
+    moveFromQToQ(imageToCompress, imagesToCompress, compressingImages);
 
     const writtenImagePath = Path.parse(imageToCompress.fullFilePath);
     const pathPrefix = "./";
