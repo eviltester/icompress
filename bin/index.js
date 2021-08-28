@@ -5,7 +5,10 @@ const util = require('util');
 //const exec = util.promisify(require('child_process').exec);
 const exec = require('child_process').exec;
 
+// https://nodejs.org/api/fs.html
 const FS = require('fs');
+
+//https://nodejs.org/api/path.html
 const Path = require('path');
 
 // https://www.npmjs.com/package/animated-gif-detector
@@ -17,6 +20,8 @@ const jsdom = require("jsdom");
 const { setInterval } = require("timers");
 const { dirxml } = require("console");
 const { JSDOM } = jsdom;
+
+// https://nodejs.org/api/url.html
 const Url = require('url').URL;
 
 
@@ -66,6 +71,9 @@ function ImageStatesEnum(){
     this.FETCHING_HEADERS = "FETCHING_HEADERS";
     this.FETCHED_HEADERS = "FETCHED_HEADERS";
     this.SHOULD_DOWNLOAD_EVALUATION = "SHOULD_DOWNLOAD_EVALUATION";
+    this.WILL_DOWNLOAD = "WILL_DOWNLOAD";
+    this.CREATING_FOLDERS = "CREATING_FOLDERS";
+    this.FILE_SYSTEM_IS_READY = "FILE_SYSTEM_IS_READY";
     this.AWAITING_DOWNLOAD = "AWAITING_DOWNLOAD";
     this.ABOUT_TO_DOWNLOAD = "ABOUT_TO_DOWNLOAD";
     this.IGNORED = "IGNORED";
@@ -79,6 +87,7 @@ function ImageStatesEnum(){
     this.COMPRESSED_VIA_IMAGEMAGICK = "COMPRESSED_VIA_IMAGEMAGICK";
 
     this.ERROR_FETCHING_HEADERS = "ERROR_FETCHING_HEADERS";
+    this.ERROR_CREATING_FOLDERS = "ERROR_CREATING_FOLDERS";
     this.ERROR_DOWNLOADING = "ERROR_DOWNLOADING";
     this.ERROR_FFMPEG_COMPRESS = "ERROR_FFMPEG_COMPRESS";
     this.ERROR_IMAGEMAGICK_COMPRESS = "ERROR_IMAGEMAGICK_COMPRESS";
@@ -107,6 +116,28 @@ const addImageErrorReport = (image, error)=> {
 };
 
 
+/*
+    Directory/File Management
+
+ */
+
+function createDir(dir){
+    console.log("creating: "  + dir);
+    try {
+        if (!FS.existsSync(dir)) {
+            FS.mkdirSync(dir, { recursive: true }); // create all subdirectories
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+
+
+/*
+    Startup
+ */
+
 
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
@@ -115,16 +146,25 @@ const options = yargs
  .argv;
 
  if(options.inputname){
-
+    //todo: need to update this to handle the state/queue system we added
     const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;    
     imagesToCompress.push({src:"local/"+options.inputname,fileName:options.inputname, path:"."});
-
  }
 
 
+// if we are given a url then create a root folder using the domain name
+let rootFolder = "";
+if(options.pageurl){
+    const givenPageUrl = new Url(options.pageurl);
+    rootFolder = givenPageUrl.hostname;
+    createDir(rootFolder);
+}
 
+/*
+    Started
+ */
 
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
@@ -175,7 +215,7 @@ image:
    dir  // directory plan to write to
    fileName // planned filename to use
    fullPath // actual file path for the file
-
+   foundOnPage  // url of parent page
 
 */
 
@@ -209,34 +249,26 @@ function getImageHeaders(url) {
   }
 
 
-  function createDir(dir){
-    console.log("creating: "  + dir);
-    try {
-        if (!FS.existsSync(dir)) {
-            FS.mkdirSync(dir);
-        }
-    } catch (err) {
-        console.error(err);
-    }
-  }
 
   function downloadFile(img) {
 
 
-    const pathParts = new Url(img.src).pathname.split('/');
-    const dir = pathParts.join('_');
-    const fileName = pathParts[pathParts.length-1];
-    img.dir = dir;
-    img.fileName = fileName;
+    // const pathParts = new Url(img.src).pathname.split('/');
+    // const dir = pathParts.join('_');
+    // const fileName = pathParts[pathParts.length-1];
+    // img.dir = dir;
+    // img.fileName = fileName;
+    //
+    //
+    //
+    // console.log("creating dir " +dir);
+    // // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
+    // createDir(dir);
 
     setImageState(img, ImageStates.DOWNLOADING)
 
-    console.log("creating dir " +dir);
-    // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
-    createDir(dir);
-
     return new Promise((resolve, reject) => {
-        const downloadTo = dir + "/" + fileName;
+        const downloadTo = img.fileDirPath + Path.sep + img.fileName;
         const fileStream = FS.createWriteStream(downloadTo);
         img.fullFilePath = downloadTo;
         fetch(img.src).
@@ -302,6 +334,7 @@ if(options.pageurl){
             }
             getImageHeaders(imageUrl)
             .then((img)=>{
+                img.foundOnPage = options.pageurl;
                 console.log("found image");
                 console.log(img);
                 imagesToProcess.push(img);
@@ -325,7 +358,7 @@ function filterImagesAndAddToDownloadQueue(processQ, downloadQ, ignoreQ, maxK){
         setImageState(image, ImageStates.SHOULD_DOWNLOAD_EVALUATION);
 
         if(image.contentLength>=(maxK*1000)){
-            setImageState(image, ImageStates.AWAITING_DOWNLOAD);
+            setImageState(image, ImageStates.WILL_DOWNLOAD);
             forRemoval.push(image);
             downloadQ.push(image);        
         }else{
@@ -392,6 +425,57 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
 
 },1000);
 
+function createFolderStructureForImage(image, root) {
+
+    return new Promise((resolve, reject) => {
+
+        try {
+            setImageState(image, ImageStates.CREATING_FOLDERS);
+            image.rootFolder = root;
+
+            //const urlToParse = img.src;
+            const urlToParse = image.foundOnPage;
+
+            // create a page folder
+            const pathParts = new Url(urlToParse).pathname.split('/');
+            const dir = pathParts.join('_');
+            image.dir = dir;
+
+            // create an image name folder
+            const fileNamePathParts = new Url(image.src).pathname.split('/');
+            const fileName = fileNamePathParts[fileNamePathParts.length - 1];
+            image.fileName = fileName;
+
+            console.log("creating dir " + dir);
+            // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
+            image.fileDirPath = image.rootFolder + Path.sep + image.dir + Path.sep + image.fileName;
+            createDir(image.fileDirPath);
+
+            setImageState(image, ImageStates.FILE_SYSTEM_IS_READY);
+            resolve(image);
+        }catch(error){
+            setImageState(image, ImageStates.ERROR_CREATING_FOLDERS);
+            addImageErrorReport(image, error);
+            reject(image);
+        }
+    });
+}
+
+const createFolderStructureQInterval = setInterval(()=>{
+    const imageToDownload = findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imagesToDownload);
+    if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
+        return;
+    }
+
+    createFolderStructureForImage(imageToDownload, rootFolder).
+    then((image)=>{
+        setImageState(image, ImageStates.AWAITING_DOWNLOAD);
+        // no Qs to move
+    }).catch((image)=>{
+        moveFromQToQ(image, imageToDownload, errorProcessingImages)
+    });
+
+},100);
 
 const downloadImagesQInterval = setInterval(()=>{
 
