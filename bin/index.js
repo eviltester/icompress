@@ -20,8 +20,22 @@ const { JSDOM } = jsdom;
 const Url = require('url').URL;
 
 
-// todo: create folder for the url then image folders below that for each image
-// todo: tidy the code
+/*
+    TODOs:
+    - NEXT
+        - change generated folder structure - site/url/imageName/versioNofImagefile.gif
+        - output an image.json into each folder to show the state, src url etc.
+        - output a report of the final state
+    - split code into modules and classes
+    - add tests for the modules and classes
+    - configuration and defaults for hard coded values
+    - spidering
+        - evaluate existing node.js spiders to see if there is something configurable that supports plugins then our image processing could be a plugin
+        - scan a url and crawl for all pages, then evaluate for images - create objects for page, urls to scan etc.
+        - image processing should be a 'task' to apply on pages to support future expansion of spider
+    - scan folder of images rather than urls and create a mirror folder with compressed images for local work
+    - GUI/App to make it easier e.g. add url, scan, save progress, interrupt and restart, rescan etc.
+ */
 
 // todo: this could be a queues object
 const imagesToProcess = []; // found images
