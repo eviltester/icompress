@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
+// http://yargs.js.org/
 const yargs = require("yargs");
-const util = require('util');
-//const exec = util.promisify(require('child_process').exec);
+
 const exec = require('child_process').exec;
 
 // https://nodejs.org/api/fs.html
@@ -14,19 +14,20 @@ const Path = require('path');
 // https://www.npmjs.com/package/animated-gif-detector
 const AnimatedGifDetector = require('animated-gif-detector');
 
+// https://github.com/matthew-andrews/isomorphic-fetch
 const fetch = require('isomorphic-fetch');
 
-const jsdom = require("jsdom");
+//https://github.com/jsdom/jsdom
+const { JSDOM } = require("jsdom");
+
+//https://nodejs.org/api/timers.html
 const { setInterval } = require("timers");
-const { dirxml } = require("console");
-const { JSDOM } = jsdom;
 
 // https://nodejs.org/api/url.html
 const Url = require('url').URL;
 
 
 /*
-
     BUGS:
 
     TODOs:
@@ -34,6 +35,7 @@ const Url = require('url').URL;
         - output an image.json into each folder to show the state, src url etc.
         - output a report of the final state
     - split code into modules and classes
+    - typescript?
     - add tests for the modules and classes
     - configuration and defaults for hard coded values
     - spidering
@@ -257,19 +259,6 @@ function getImageHeaders(url) {
 
   function downloadFile(img) {
 
-
-    // const pathParts = new Url(img.src).pathname.split('/');
-    // const dir = pathParts.join('_');
-    // const fileName = pathParts[pathParts.length-1];
-    // img.dir = dir;
-    // img.fileName = fileName;
-    //
-    //
-    //
-    // console.log("creating dir " +dir);
-    // // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
-    // createDir(dir);
-
     setImageState(img, ImageStates.DOWNLOADING)
 
     return new Promise((resolve, reject) => {
@@ -289,13 +278,11 @@ function getImageHeaders(url) {
             console.error('stderr:', error.stderr);
             reject(error);
         });
-
     });
 
   }  
 
 function getDomFromUrl(url){
-
 
     console.log("Getting "  + url);
 
@@ -317,9 +304,6 @@ function getDomFromUrl(url){
 // get the source and find all images
 // get all images and download those which are > 50K based on header to a folder
 
-
-
-console.log(options)
 if(options.pageurl){
 
     console.log(options.pageurl)
@@ -427,13 +411,10 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
 
         process.exit(0); // OK I Quit
     }
-
 },1000);
 
 function createFolderStructureForImage(image, root) {
-
     return new Promise((resolve, reject) => {
-
         try {
             setImageState(image, ImageStates.CREATING_FOLDERS);
             image.rootFolder = root;
@@ -513,6 +494,7 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
 
     setImageState(imageToFFmpeg, ImageStates.COMPRESSING_VIA_FFMPEG);
+
     return new Promise((resolve, reject)=>{
         execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
@@ -534,6 +516,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
 
     setImageState(imageToCompress, ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
+
     return new Promise((resolve, reject)=>{
         execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
@@ -569,8 +552,6 @@ const processCompressImagesQ = ()=>{
     const inputFileName = pathPrefix + imageToCompress.fullFilePath;
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
-
-    //createDir(pathPrefix + writtenImagePath.dir);
 
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
 
