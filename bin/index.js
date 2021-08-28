@@ -58,9 +58,7 @@ function execPromise(command) {
         exec(command, (error, stdout, stderr) => {
             if (error) {
                 reject(error);
-                return;
             }
-
             resolve(stdout.trim());
         });
     });
@@ -206,7 +204,6 @@ function getImageHeaders(url) {
                     });
 
     });
-
   }
 
 
@@ -237,6 +234,8 @@ function getImageHeaders(url) {
     console.log("creating dir " +dir);
     createDir(dir);
 
+    img.state="DOWNLOADING";
+
     return new Promise((resolve, reject) => {
         const downloadTo = dir + "/" + fileName;
         const fileStream = FS.createWriteStream(downloadTo);
@@ -246,9 +245,11 @@ function getImageHeaders(url) {
             response.body.pipe(fileStream);
             response.body.on("error", reject);
             fileStream.on("finish", resolve);
+            img.state="DOWNLOADED";
             resolve(img)
         }).
         catch((error)=>{
+            img.state="ERROR_DOWNLOADING";
                         console.error('stderr:', error.stderr);
                         reject(error);
                     });
@@ -322,9 +323,11 @@ function filterImagesAndAddToDownloadQueue(processQ, downloadQ, ignoreQ, maxK){
 
     for(image of processQ){
         if(image.contentLength>=(maxK*1000)){
+            image.state="AWAITING_DOWNLOAD";
             forRemoval.push(image);
             downloadQ.push(image);        
         }else{
+            image.state="IGNORED";
             ignoreQ.push(image);
             forRemoval.push(image);
         }
@@ -345,19 +348,34 @@ Ignored: ${imagesToLeaveAlone.length}
 Errors: ${errorProcessingImages.length}`);
 }
 
-const reportOnImageQsInterval = setInterval(()=>{reportOnQueues},1000);
 
+
+
+let nothingToDoCount=0;
 
 const quitWhenNothingToDoInterval = setInterval(()=>{
     let shouldIQuit = false;
 
     if(imagesToProcess.length===0 && imagesToCompress.length===0 && imagesToDownload.length===0 && downloadingImages.length===0 && compressingImages.length===0){
         shouldIQuit= true;
+        nothingToDoCount++;
+    }else{
+        nothingToDoCount=0;
+    }
+
+    console.log("nothing to do " + nothingToDoCount);
+
+    // add a delay before quiting
+    if(nothingToDoCount<10){
+        reportOnQueues();
+        return;
     }
 
     if(shouldIQuit){
         reportOnQueues();
 
+        console.log("Compressed Images");
+        console.log(compressedImages);
         console.log("Ignored Images");  // todo add an ignore reason to the image
         console.log(imagesToLeaveAlone);
         console.log("Error Processing Images")
@@ -368,11 +386,26 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
 
 },1000);
 
-const addImagesToDownloadQInterval = setInterval(()=>{filterImagesAndAddToDownloadQueue(imagesToProcess, imagesToDownload, imagesToLeaveAlone, 50)},500);
+const findFirstImageWithState = (desiredState, queue)=>{
+    for(image of queue){
+        if(image.state==desiredState){
+            return image;
+        }
+    }
+    return null;
+}
 
 const downloadImagesQInterval = setInterval(()=>{
-    if(imagesToDownload.length>0){
-        imageToDownload = imagesToDownload.shift();
+
+    const imageToDownload = findFirstImageWithState("AWAITING_DOWNLOAD", imagesToDownload);
+    if(imageToDownload==null){
+        return;
+    }
+    imageToDownload.state="ABOUT_TO_DOWNLOAD";
+
+//    if(imagesToDownload.length>0){
+        //imageToDownload = imagesToDownload.shift();
+        imagesToDownload.splice(imagesToDownload.indexOf(imageToDownload), 1);
         downloadingImages.pop(imageToDownload);
         console.log("about to download");
         console.log(imagesToDownload);
@@ -380,6 +413,7 @@ const downloadImagesQInterval = setInterval(()=>{
         then(()=>{
             console.log("downloaded ");
             console.log(imageToDownload);
+            imageToDownload.state="READY_TO_COMPRESS";
             imagesToCompress.push(imageToDownload);
             downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
         }).catch((error)=>
@@ -389,33 +423,54 @@ const downloadImagesQInterval = setInterval(()=>{
              errorProcessingImages.push(imageToDownload);
              downloadingImages.splice(downloadingImages.indexOf(imageToDownload),1);
             });
-    }
+    //}
 },500)
 
 const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
 
-function ffmpegCompress(imageToCompress, inputFileName, outputFileName) {
+function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
+    console.log("compressing using ffmpeg ");
+    imageToFFmpeg.state="COMPRESSING_VIA_FFMPEG";
     return new Promise((resolve, reject)=>{
         execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
-                console.log("compressed " + imageToCompress);
-                imageToCompress.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
-                resolve(imageToCompress)
+                console.log("compressed via ffmpeg ");
+                imageToFFmpeg.state="COMPRESSED_VIA_FFMPEG";
+                console.log(imageToFFmpeg);
+                imageToFFmpeg.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
+
+                // need to delay otherwise the file is not ready for processing
+                // todo: find a better way to determine if file is ready
+                console.log("waiting for file to be ready " + inputFileName);
+                //setTimeout(() =>{ console.log("file is ready " + imageToFFmpeg.src); resolve(imageToFFmpeg)}, 2000);
+                resolve(imageToFFmpeg)
             }).catch((error)=> {
             console.log("error during ffmpeg compress");
-            imageToCompress.errorReport = error;
-            reject(imageToCompress);
+            imageToFFmpeg.errorReport = error;
+            reject(imageToFFmpeg);
         })
     });
+}
+
+// thought I needed timing sync between file writes, but actually
+// I needed to add const in front of variables to make them scoped
+// rather than creating globals which get overwritten by other parts of the code!
+function wait(milliseconds) {
+    console.log("Waiting...")
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
 const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
 
 function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
+    console.log("compressing using imagemagick ");
+    imageToCompress.state="COMPRESSING_VIA_IMAGEMAGICK";
     return new Promise((resolve, reject)=>{
         execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
-                console.log("compressed " + imageToCompress);
+                imageToCompress.state="COMPRESSED_VIA_IMAGEMAGICK";
+                console.log("compressed ");
+                console.log(imageToCompress);
                 imageToCompress.imagemagick = {inputFile: inputFileName, outputFile: outputFileName};
                 resolve(imageToCompress);
             }).catch((error)=> {
@@ -426,6 +481,9 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     });
 }
 
+/*
+    async is basically a promise where the resolve is the return value and the reject is the exception
+ */
 const moveFromQToQ = async (imageToMove, fromQ, toQ)=>{
     try {
         toQ.push(imageToMove);
@@ -436,67 +494,56 @@ const moveFromQToQ = async (imageToMove, fromQ, toQ)=>{
     }
 };
 
-const compressImagesQInterval = setInterval(()=>{
+const processCompressImagesQ = ()=>{
 
-    if(imagesToCompress.length>0){
-        imageToCompress = imagesToCompress.shift();
+    const imageToCompress = findFirstImageWithState("READY_TO_COMPRESS", imagesToCompress);
+    if(imageToCompress==null){
+        return;
+    }
+    imageToCompress.state="ABOUT_TO_COMPRESS";
+
+    // if(imagesToCompress.length>0){
+        //imageToCompress = imagesToCompress.shift();
+        imagesToCompress.splice(imagesToCompress.indexOf(imageToCompress), 1);
+        compressingImages.pop(imageToCompress);
         console.log("about to compress");
         console.log(imageToCompress);
-        compressingImages.pop(imageToCompress);
 
-        writtenImagePath = Path.parse(imageToCompress.fullFilePath);
-        pathPrefix = "./";
+
+        const writtenImagePath = Path.parse(imageToCompress.fullFilePath);
+        const pathPrefix = "./";
 
         // possibly use Path.relative() with "./" or preocess.cwd()
-        inputFileName = pathPrefix + imageToCompress.fullFilePath;
-        outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
-        compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
+        const inputFileName = pathPrefix + imageToCompress.fullFilePath;
+        const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
+        const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
 
         createDir(pathPrefix + writtenImagePath.dir);
 
         if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
-            execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
-            .then((result)=>{
-                imageMagickCompress(imageToCompress, outputFileName, compressedFileName).
-                then(moveFromQToQ(imageToCompress, compressingImages, compressedImages)).
-                catch(moveFromQToQ(imageToCompress, compressingImages, errorProcessingImages));
-                // execParas(imagemagick, {inputFileName: outputFileName, outputFileName: compressedFileName}).then((result)=>{
-                //     console.log("compressed " +imageToCompress);
-                //     compressedImages.push(imageToCompress);
-                //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-                // }).catch((error)=>{
-                //     console.log("error here");
-                //     imageToCompress.errorReport = error;
-                //     errorProcessingImages.push(imageToCompress);
-                //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-                // })
-            })
-            .catch((error)=>{
-                console.log("Error During Processing");
-                imageToCompress.errorReport = error;
-                errorProcessingImages.push(imageToCompress);
-                compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            });
+
+            ffmpegCompress(imageToCompress, inputFileName, outputFileName)
+                .then((image)=> {
+                    imageMagickCompress(image, outputFileName, compressedFileName)
+                    .then((image)=> {moveFromQToQ(image, compressingImages, compressedImages)})
+                    .catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
+                })
+                .catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
+
         }else{
             // just apply image magic
             imageMagickCompress(imageToCompress, inputFileName, compressedFileName).
-            then(moveFromQToQ(imageToCompress, compressingImages, compressedImages)).
-            catch(moveFromQToQ(imageToCompress, compressingImages, errorProcessingImages));
-
-            // execParas(imagemagick, {inputFileName: inputFileName, outputFileName: compressedFileName}).then((result)=>{
-            //     console.log("compressed " +imageToCompress);
-            //     compressedImages.push(imageToCompress);
-            //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            // }).catch((error)=>{
-            //     console.log("error here");
-            //     imageToCompress.errorReport = error;
-            //     errorProcessingImages.push(imageToCompress);
-            //     compressingImages.splice(compressingImages.indexOf(imageToCompress),1);
-            // })
+            then((image)=>{moveFromQToQ(image, compressingImages, compressedImages)}).
+            catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
         }
-    }
-},500);
+    //}
+};
 
+const compressImagesQInterval = setInterval(()=>{processCompressImagesQ(
+                    imagesToCompress, compressingImages, compressedImages, errorProcessingImages)
+        },1000);
+const reportOnImageQsInterval = setInterval(()=>{reportOnQueues},500);
+const addImagesToDownloadQInterval = setInterval(()=>{filterImagesAndAddToDownloadQueue(imagesToProcess, imagesToDownload, imagesToLeaveAlone, 50)},500);
 
 
 
