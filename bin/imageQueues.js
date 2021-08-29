@@ -115,12 +115,10 @@ module.exports = class ImageQueues{
 
         const reportLines = [];
 
-        for(const qName in this.QNames){
-            if (this.QNames.hasOwnProperty(qName)) {
+        for(const qName of Object.getOwnPropertyNames(this.QNames)){
                 reportLines.push(qName)
                 reportLines.push("----------------");
                 reportLines.push(this.reportOnQueueContents(this.QNames[qName]));
-            }
         }
 
         return reportLines.join("\n");
