@@ -388,8 +388,7 @@ function createFolderStructureForImage(image, root) {
     });
 }
 
-// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
-const createFolderStructureQInterval = setInterval(()=>{
+const processQueueToCreateFolderStructure = ()=>{
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
@@ -403,7 +402,9 @@ const createFolderStructureQInterval = setInterval(()=>{
         imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
     });
 
-},100);
+}
+// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
+;
 
 const processDownloadImagesQ = ()=>{
 
@@ -523,6 +524,7 @@ const processCompressImagesQ = ()=>{
     }
 };
 
+const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
 const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
 const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);
