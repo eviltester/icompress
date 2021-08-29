@@ -32,8 +32,8 @@ const Url = require('url').URL;
 
     TODOs:
     - NEXT
-        - output an image.json into each folder to show the state, src url etc.
-        - output a report of the final state
+        - output a report of the final state - easier with a queues object - just write the object json.stringify to file
+        - add output file paths and output file sizes to the img so that this is in the json output
     - split code into modules and classes
     - typescript?
     - add tests for the modules and classes
@@ -221,7 +221,7 @@ image:
    type // type reported by server
    dir  // directory plan to write to
    fileName // planned filename to use
-   fullPath // actual file path for the file
+   fullFilePath // actual file path for the file
    foundOnPage  // url of parent page
 
 */
@@ -374,6 +374,22 @@ Errors: ${errorProcessingImages.length}`);
 
 
 
+function outputImageJsonFile(image) {
+    //https://nodejs.dev/learn/writing-files-with-nodejs
+    try {
+        const data = FS.writeFileSync(image.fullFilePath + ".json", JSON.stringify(image, null, 2));
+        //file written successfully
+    } catch (err) {
+        console.error(err)
+    }
+}
+
+function outputImageJsonFiles(compressedImages) {
+
+    for(image of compressedImages){
+        outputImageJsonFile(image);
+    }
+}
 
 let nothingToDoCount=0;
 
@@ -408,6 +424,8 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
         console.log(imagesToLeaveAlone);
         console.log("Error Processing Images")
         console.log(errorProcessingImages);
+
+        outputImageJsonFiles(compressedImages);
 
         process.exit(0); // OK I Quit
     }
@@ -558,7 +576,10 @@ const processCompressImagesQ = ()=>{
         ffmpegCompress(imageToCompress, inputFileName, outputFileName)
             .then((image)=> {
                 imageMagickCompress(image, outputFileName, compressedFileName)
-                .then((image)=> {moveFromQToQ(image, compressingImages, compressedImages)})
+                .then((image)=> {
+                        moveFromQToQ(image, compressingImages, compressedImages);
+                        outputImageJsonFile(image);
+                })
                 .catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
             })
             .catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
@@ -566,7 +587,10 @@ const processCompressImagesQ = ()=>{
     }else{
         // just apply image magic
         imageMagickCompress(imageToCompress, inputFileName, compressedFileName).
-        then((image)=>{moveFromQToQ(image, compressingImages, compressedImages)}).
+        then((image)=>{
+                moveFromQToQ(image, compressingImages, compressedImages);
+                outputImageJsonFile(image);
+        }).
         catch((image)=>{moveFromQToQ(image, compressingImages, errorProcessingImages)});
     }
 };
