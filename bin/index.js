@@ -33,7 +33,6 @@ const ImageQueues = require("./imageQueues.js");
 
     TODOs:
     - NEXT
-        - output a report of the final state - easier with a queues object - just write the object json.stringify to file
         - add output file paths and output file sizes to the img so that this is in the json output
     - split code into modules and classes
     - typescript?
@@ -49,8 +48,6 @@ const ImageQueues = require("./imageQueues.js");
 
 
 const imageQueues = new ImageQueues();
-
-
 
 function ImageStatesEnum(){
 
