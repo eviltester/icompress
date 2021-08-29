@@ -3,8 +3,6 @@
 // http://yargs.js.org/
 const yargs = require("yargs");
 
-const exec = require('child_process').exec;
-
 // https://nodejs.org/api/fs.html
 const FS = require('fs');
 
@@ -27,6 +25,7 @@ const { setInterval } = require("timers");
 const Url = require('url').URL;
 
 const ImageQueues = require("./imageQueues.js");
+const Shell = require("./commandLineExec.js");
 
 /*
     BUGS:
@@ -154,42 +153,7 @@ if(options.pageurl){
     Started
  */
 
-function execPromise(command) {
-    return new Promise(function(resolve, reject) {
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-            }
-            resolve(stdout.trim());
-        });
-    });
-}
 
-
-function execParas(commandLineTemplate, params) {
-
-    // params is an object where each field is a param
-    const paramNames = Object.getOwnPropertyNames(params);
-    let commandLine = commandLineTemplate;
-
-    for(const paramName of paramNames){
-        commandLine = commandLine.split("${"+paramName+"}").join(params[paramName]);// parse the string and replace the template variables
-    }
-
-    console.log(commandLine);
-
-    return new Promise((resolve, reject) => {
-
-        execPromise(commandLine).
-        then((result)=>{console.log('stdout:', result);
-                        resolve(result)})
-        .catch((error)=>{
-            console.error('stderr:', error);
-            reject(error)
-        });
-    }
-    );
-  }
 
 
 // TODO: start making image an object/class
@@ -478,7 +442,7 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     setImageState(imageToFFmpeg, ImageStates.COMPRESSING_VIA_FFMPEG);
 
     return new Promise((resolve, reject)=>{
-        execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
+        Shell.execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
                 setImageState(imageToFFmpeg, ImageStates.COMPRESSED_VIA_FFMPEG);
                 imageToFFmpeg.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
@@ -502,7 +466,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     setImageState(imageToCompress, ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
     return new Promise((resolve, reject)=>{
-        execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
+        Shell.execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
                 setImageState(imageToCompress, ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
                 imageToCompress.imagemagick = {inputFile: inputFileName, outputFile: outputFileName};
