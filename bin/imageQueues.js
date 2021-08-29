@@ -1,5 +1,7 @@
 // todo: we may not need queues, we may be able to rely on the state field in the image object put this behind an abstraction and test
-// e.g. it could be queues.findFirstImageWithState(state) which knows which queue to look in for states, then when that works we could remove queues and have a central store and see if it makes a difference, if it didn't then queues would be renamed to images
+// e.g. it could be queues.findFirstImageWithState(state) which knows which queue to look in for states,
+// then when that works we could remove queues and have a central store and see if it makes a difference,
+// if it didn't then queues would be renamed to images
 
 function ImageQueueNamesEnum(){
     this.IMAGES_TO_PROCESS = "IMAGES_TO_PROCESS";
@@ -16,27 +18,35 @@ const QueueNames = new ImageQueueNamesEnum();
 
 module.exports = class ImageQueues{
 
-    // todo: make the queue arrays private to encapsulate them within this class and allow changing the implementation in the future
+    #imagesToProcess; // found images
+    #imagesToDownload; // images which are big enough to process and download them
+    #downloadingImages; // images we are currently downloading
+    #imagesToCompress; // images which we need to compress
+    #compressingImages;
+    #imagesToLeaveAlone; // images which we need to compress
+    #compressedImages;
+    #errorProcessingImages;
+    
     constructor(){
-        this.imagesToProcess = []; // found images
-        this.imagesToDownload = []; // images which are big enough to process and download them
-        this.downloadingImages = []; // images we are currently downloading
-        this.imagesToCompress = []; // images which we need to compress
-        this.compressingImages = [];
-        this.imagesToLeaveAlone = []; // images which we need to compress
-        this.compressedImages = [];
-        this.errorProcessingImages = [];
+        this.#imagesToProcess = []; // found images
+        this.#imagesToDownload = []; // images which are big enough to process and download them
+        this.#downloadingImages = []; // images we are currently downloading
+        this.#imagesToCompress = []; // images which we need to compress
+        this.#compressingImages = [];
+        this.#imagesToLeaveAlone = []; // images which we need to compress
+        this.#compressedImages = [];
+        this.#errorProcessingImages = [];
 
         this.QNames = QueueNames;
         this.Qs = {};
-        this.Qs[this.QNames.IMAGES_TO_PROCESS] = this.imagesToProcess;
-        this.Qs[this.QNames.IMAGES_TO_DOWNLOAD] = this.imagesToDownload;
-        this.Qs[this.QNames.DOWNLOADING_IMAGES] = this.downloadingImages;
-        this.Qs[this.QNames.IMAGES_TO_COMPRESS] = this.imagesToCompress;
-        this.Qs[this.QNames.COMPRESSING_IMAGES] = this.compressingImages;
-        this.Qs[this.QNames.IMAGES_TO_IGNORE] = this.imagesToLeaveAlone;
-        this.Qs[this.QNames.COMPRESSED_IMAGES] = this.compressedImages;
-        this.Qs[this.QNames.ERROR_PROCESSING_IMAGES] = this.errorProcessingImages;
+        this.Qs[this.QNames.IMAGES_TO_PROCESS] = this.#imagesToProcess;
+        this.Qs[this.QNames.IMAGES_TO_DOWNLOAD] = this.#imagesToDownload;
+        this.Qs[this.QNames.DOWNLOADING_IMAGES] = this.#downloadingImages;
+        this.Qs[this.QNames.IMAGES_TO_COMPRESS] = this.#imagesToCompress;
+        this.Qs[this.QNames.COMPRESSING_IMAGES] = this.#compressingImages;
+        this.Qs[this.QNames.IMAGES_TO_IGNORE] = this.#imagesToLeaveAlone;
+        this.Qs[this.QNames.COMPRESSED_IMAGES] = this.#compressedImages;
+        this.Qs[this.QNames.ERROR_PROCESSING_IMAGES] = this.#errorProcessingImages;
     }
 
 
@@ -74,25 +84,25 @@ module.exports = class ImageQueues{
 
     reportOnQueueLengths(){
         const lines = [];
-        lines.push(`To Process: ${imagesToProcess.length}`);
-        lines.push(`To Download: ${imagesToDownload.length}`);
-        lines.push(`Downloading: ${downloadingImages.length}`);
-        lines.push(`To Compress: ${imagesToCompress.length}`);
-        lines.push(`Compressing: ${compressingImages.length}`);
-        lines.push(`Done: ${compressedImages.length}`);
-        lines.push(`Ignored: ${imagesToLeaveAlone.length}`);
-        lines.push(`Errors: ${errorProcessingImages.length}`);
+        lines.push(`To Process: ${this.#imagesToProcess.length}`);
+        lines.push(`To Download: ${this.#imagesToDownload.length}`);
+        lines.push(`Downloading: ${this.#downloadingImages.length}`);
+        lines.push(`To Compress: ${this.#imagesToCompress.length}`);
+        lines.push(`Compressing: ${this.#compressingImages.length}`);
+        lines.push(`Done: ${this.#compressedImages.length}`);
+        lines.push(`Ignored: ${this.#imagesToLeaveAlone.length}`);
+        lines.push(`Errors: ${this.#errorProcessingImages.length}`);
 
         return lines.join("\n");
     }
 
     allProcessIngQueuesAreEmpty(){
         return(
-            imagesToProcess.length===0 &&
-            imagesToCompress.length===0 &&
-            imagesToDownload.length===0 &&
-            downloadingImages.length===0 &&
-            compressingImages.length===0);
+            this.#imagesToProcess.length===0 &&
+            this.#imagesToCompress.length===0 &&
+            this.#imagesToDownload.length===0 &&
+            this.#downloadingImages.length===0 &&
+            this.#compressingImages.length===0);
     }
 
     reportOnQueueContents(queueName){
@@ -116,4 +126,12 @@ module.exports = class ImageQueues{
         return reportLines.join("\n");
     }
 
+    getImagesFromQueue(qName) {
+        const queue = this.Qs[qName];
+        return queue.map( (image) => image);
+    }
+
+    addToProcessQueue(image) {
+        this.#imagesToProcess.push(image);
+    }
 }

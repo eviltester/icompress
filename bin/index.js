@@ -47,17 +47,8 @@ const ImageQueues = require("./imageQueues.js");
     - GUI/App to make it easier e.g. add url, scan, save progress, interrupt and restart, rescan etc.
  */
 
-// quick hack to introduce the class and start migrating code without breaking much
-const imageQueues = new ImageQueues();
 
-imagesToProcess = imageQueues.imagesToProcess;
-imagesToDownload = imageQueues.imagesToDownload;
-downloadingImages =imageQueues.downloadingImages;
-imagesToCompress = imageQueues.imagesToCompress;
-compressingImages = imageQueues.compressingImages;
-imagesToLeaveAlone = imageQueues.imagesToLeaveAlone;
-compressedImages = imageQueues.compressedImages;
-errorProcessingImages = imageQueues.errorProcessingImages;
+const imageQueues = new ImageQueues();
 
 
 
@@ -317,7 +308,8 @@ if(options.pageurl){
                 img.foundOnPage = options.pageurl;
                 console.log("found image");
                 console.log(img);
-                imagesToProcess.push(img);
+                imageQueues.addToProcessQueue(img);
+
             }).catch((error)=>{console.log("image error"); console.log(error)});    
         }
 
@@ -362,15 +354,16 @@ function outputImageJsonFile(image) {
     }
 }
 
-function outputImageJsonFiles(compressedImages) {
+function outputImageJsonFiles(imagesToOutput) {
 
-    for(const image of compressedImages){
+    for(const image of imagesToOutput){
         outputImageJsonFile(image);
     }
 }
 
 let nothingToDoCount=0;
 
+// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
 const quitWhenNothingToDoInterval = setInterval(()=>{
     let shouldIQuit = false;
 
@@ -392,18 +385,8 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
 
     if(shouldIQuit){
         console.log(imageQueues.reportOnQueueLengths());
-
         console.log(imageQueues.reportOnAllQueueContents())
-        // // todo: queues.reportOnQueuesContents()
-        // console.log("Compressed Images");
-        // console.log(compressedImages);
-        // console.log("Ignored Images");  // todo add an ignore reason to the image
-        // console.log(imagesToLeaveAlone);
-        // console.log("Error Processing Images")
-        // console.log(errorProcessingImages);
-
-        outputImageJsonFiles(compressedImages);
-
+        outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
 },1000);
@@ -442,6 +425,7 @@ function createFolderStructureForImage(image, root) {
     });
 }
 
+// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
 const createFolderStructureQInterval = setInterval(()=>{
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
@@ -458,6 +442,7 @@ const createFolderStructureQInterval = setInterval(()=>{
 
 },100);
 
+// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
 const downloadImagesQInterval = setInterval(()=>{
 
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
@@ -468,7 +453,7 @@ const downloadImagesQInterval = setInterval(()=>{
 
     imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
 
-        console.log(imagesToDownload);
+        console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
         downloadFile(imageToDownload).
         then(()=>{
             setImageState(imageToDownload, ImageStates.READY_TO_COMPRESS);
