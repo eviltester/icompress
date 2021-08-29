@@ -116,12 +116,13 @@ function createDir(dir){
 }
 
 
-
 /*
     Startup
  */
 
-
+// todo: check if ffmpeg and imagemagick are installed, if not then exit with error messages
+// todo: have a 'retry' for any of the images in an output state file which were in an 'error' state and pick up from the last valid state
+// todo: add an output folder option rather than always using the current folder
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
@@ -138,6 +139,7 @@ const options = yargs
         state:ImageStates.READY_TO_COMPRESS
     });
  }
+
 
 
 // if we are given a url then create a root folder using the domain name
@@ -466,6 +468,9 @@ const downloadImagesQInterval = setInterval(()=>{
 
 
 
+// TODO: document this command fully
+// add config to experiment with the different attributes for compression e.g. fps values, scale and resize
+// https://superuser.com/questions/556029/how-do-i-convert-a-video-to-gif-using-ffmpeg-with-reasonable-quality
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
 
     const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
@@ -487,6 +492,8 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
 }
 
 // todo: in the future allow custom commands to be added for images
+// todo: document this command fully
+// todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
 function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
 
     // todo: allow configuration and profiles for image magick
