@@ -302,11 +302,6 @@ function filterImagesAndAddToDownloadQueue(maxK){
     }
 }
 
-
-
-
-
-
 function outputImageJsonFile(image) {
     //https://nodejs.dev/learn/writing-files-with-nodejs
     try {
@@ -326,8 +321,7 @@ function outputImageJsonFiles(imagesToOutput) {
 
 let nothingToDoCount=0;
 
-// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
-const quitWhenNothingToDoInterval = setInterval(()=>{
+const quitIfQueuesAreEmpty = ()=>{
     let shouldIQuit = false;
 
     if(imageQueues.allProcessIngQueuesAreEmpty()){
@@ -352,7 +346,9 @@ const quitWhenNothingToDoInterval = setInterval(()=>{
         outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
-},1000);
+
+}
+
 
 function createFolderStructureForImage(image, root) {
     return new Promise((resolve, reject) => {
@@ -403,8 +399,6 @@ const processQueueToCreateFolderStructure = ()=>{
     });
 
 }
-// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
-;
 
 const processDownloadImagesQ = ()=>{
 
@@ -430,10 +424,6 @@ const processDownloadImagesQ = ()=>{
     //}
 
 }
-
-
-
-
 
 // TODO: document this command fully
 // add config to experiment with the different attributes for compression e.g. fps values, scale and resize
@@ -524,6 +514,7 @@ const processCompressImagesQ = ()=>{
     }
 };
 
+const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
 const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
 const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
