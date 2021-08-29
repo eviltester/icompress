@@ -26,7 +26,7 @@ module.exports = class ImageQueues{
     #imagesToLeaveAlone; // images which we need to compress
     #compressedImages;
     #errorProcessingImages;
-    
+
     constructor(){
         this.#imagesToProcess = []; // found images
         this.#imagesToDownload = []; // images which are big enough to process and download them
