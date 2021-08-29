@@ -405,8 +405,7 @@ const createFolderStructureQInterval = setInterval(()=>{
 
 },100);
 
-// TODO: make this a separate function which is called by setInterval, rather than all code in the setInterval
-const downloadImagesQInterval = setInterval(()=>{
+const processDownloadImagesQ = ()=>{
 
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
@@ -416,19 +415,22 @@ const downloadImagesQInterval = setInterval(()=>{
 
     imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
 
-        console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
-        downloadFile(imageToDownload).
-        then(()=>{
-            setImageState(imageToDownload, ImageStates.READY_TO_COMPRESS);
-            imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.IMAGES_TO_COMPRESS);
-        }).
-        catch((error)=> {
-            setImageState(imageToDownload, ImageStates.ERROR_DOWNLOADING);
-            addImageErrorReport(imageToDownload, error)
-            imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES);
-        });
+    console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
+    downloadFile(imageToDownload).
+    then(()=>{
+        setImageState(imageToDownload, ImageStates.READY_TO_COMPRESS);
+        imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.IMAGES_TO_COMPRESS);
+    }).
+    catch((error)=> {
+        setImageState(imageToDownload, ImageStates.ERROR_DOWNLOADING);
+        addImageErrorReport(imageToDownload, error)
+        imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES);
+    });
     //}
-},500)
+
+}
+
+
 
 
 
@@ -521,6 +523,7 @@ const processCompressImagesQ = ()=>{
     }
 };
 
+const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
 const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);
 const addImagesToDownloadQInterval = setInterval(()=>{filterImagesAndAddToDownloadQueue(50)},500);
