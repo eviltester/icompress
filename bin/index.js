@@ -9,15 +9,6 @@ const FS = require('fs');
 //https://nodejs.org/api/path.html
 const Path = require('path');
 
-// https://www.npmjs.com/package/animated-gif-detector
-const AnimatedGifDetector = require('animated-gif-detector');
-
-// https://github.com/matthew-andrews/isomorphic-fetch
-const fetch = require('isomorphic-fetch');
-
-//https://github.com/jsdom/jsdom
-const { JSDOM } = require("jsdom");
-
 const HTTP = require("./httpWrapper.js");
 
 //https://nodejs.org/api/timers.html
@@ -27,12 +18,10 @@ const { setInterval } = require("timers");
 const Url = require('url').URL;
 
 const ImageQueues = require("./imageQueues.js");
-const Shell = require("./commandLineExec.js");
 const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
-const FFMPEG = require("./ffmpegWrapper.js");
-const ImageMagick = require("./imageMagickWrapper.js");
 const imageQueues = new ImageQueues();
+const CompressImage = require("./imageCompression");
 
 const ImageHTTP = require("./imageHttp.js");
 
@@ -57,10 +46,6 @@ const ImageHTTP = require("./imageHttp.js");
     - scan folder of images rather than urls and create a mirror folder with compressed images for local work
     - GUI/App to make it easier e.g. add url, scan, save progress, interrupt and restart, rescan etc.
  */
-
-
-
-
 
 /*
     Directory/File Management
@@ -281,8 +266,8 @@ const processDownloadImagesQ = ()=>{
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
-    imageToDownload.setState(ImageStates.ABOUT_TO_DOWNLOAD);
 
+    imageToDownload.setState(ImageStates.ABOUT_TO_DOWNLOAD);
     imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
 
     console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
@@ -299,50 +284,7 @@ const processDownloadImagesQ = ()=>{
 
 }
 
-// todo: move to an ImageCompressWrapper class
-function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
 
-    imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
-
-    return new Promise((resolve, reject)=>{
-        const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
-        FFMPEG.compress(inputFileName, outputFileName)
-        //Shell.execParas(ffmpeg, commandDetails)
-            .then((result)=>{
-                imageToFFmpeg.setState(ImageStates.COMPRESSED_VIA_FFMPEG);
-                imageToFFmpeg.addCommand(result.ffmpeg, result.commandDetails);
-                resolve(imageToFFmpeg)
-            }).catch((error)=> {
-            imageToFFmpeg.setState(ImageStates.ERROR_FFMPEG_COMPRESS);
-            imageToFFmpeg.addErrorReport(error);
-                reject(imageToFFmpeg);
-        })
-    });
-}
-
-// todo: move to an ImageCompressWrapper class
-// todo: in the future allow custom commands to be added for images
-// todo: document this command fully
-// todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
-function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
-
-    imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
-
-    return new Promise((resolve, reject)=>{
-        ImageMagick.compress(inputFileName, outputFileName)
-            .then((result)=>{
-                imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
-                imageToCompress.addCommand(result.imagemagick, result.commandDetails);
-                resolve(imageToCompress);
-            }).catch((error)=> {
-            imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
-            imageToCompress.addErrorReport(error);
-                reject(imageToCompress);
-        })
-    });
-}
-
-// todo: add to an ImageQueuesProcessing module
 const processCompressImagesQ = ()=>{
 
     const imageToCompress = imageQueues.findFirstImageWithState(ImageStates.READY_TO_COMPRESS, imageQueues.QNames.IMAGES_TO_COMPRESS);
@@ -352,37 +294,14 @@ const processCompressImagesQ = ()=>{
     imageToCompress.setState(ImageStates.ABOUT_TO_COMPRESS);
     imageQueues.moveFromQToQ(imageToCompress, imageQueues.QNames.IMAGES_TO_COMPRESS, imageQueues.QNames.COMPRESSING_IMAGES);
 
-    const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
-    const pathPrefix = "./";
+    CompressImage.compress(imageToCompress).
+    then((image)=>{
+        imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
+        outputImageJsonFile(image);
+    }).catch((image)=>{
+        imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
+    });
 
-    // possibly use Path.relative() with "./" or preocess.cwd()
-    const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
-    const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
-    const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
-
-    // todo: the if else should be in the ImageCompressWrapper class
-    if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
-
-        ffmpegCompress(imageToCompress, inputFileName, outputFileName)
-            .then((image)=> {
-                imageMagickCompress(imageToCompress, outputFileName, compressedFileName)
-                .then((image)=> {
-                    imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
-                        outputImageJsonFile(image);
-                })
-                .catch((image)=>{imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)});
-            })
-            .catch((image)=>{imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)});
-
-    }else{
-        // just apply image magic
-        imageMagickCompress(imageToCompress, inputFileName, compressedFileName).
-        then((image)=>{
-            imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
-                outputImageJsonFile(image);
-        }).
-        catch((image)=>{imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)});
-    }
 };
 
 

@@ -4,6 +4,8 @@ const Shell = require("./commandLineExec.js");
 
 // add config to experiment with the different attributes for compression e.g. fps values, scale and resize
 // https://superuser.com/questions/556029/how-do-i-convert-a-video-to-gif-using-ffmpeg-with-reasonable-quality
+
+// todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
 function imageMagickCompress(inputFileName, outputFileName){
 
     // todo: allow configuration and profiles for image magick
