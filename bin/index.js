@@ -78,15 +78,6 @@ function ImageStatesEnum(){
 
 const ImageStates = new ImageStatesEnum();
 
-// todo: backwards compatibility until full class created
-const setImageState = (image, newState)=>{
-    image.setState(newState);
-}
-const addImageErrorReport = (image, error)=> {
-    image.addErrorReport(error);
-};
-
-
 /*
     Directory/File Management
 
@@ -174,7 +165,7 @@ function getImageHeaders(url) {
 
     return new Promise((resolve, reject) => {
 
-        setImageState(img,ImageStates.FETCHING_HEADERS);
+        img.setState(ImageStates.FETCHING_HEADERS);
 
         fetch(url, {method: 'HEAD'}).
         then(function(response) {
@@ -210,11 +201,11 @@ function getImageHeaders(url) {
             response.body.pipe(fileStream);
             response.body.on("error", reject);
             fileStream.on("finish", resolve);
-            setImageState(img, ImageStates.DOWNLOADED)
+            img.setState(ImageStates.DOWNLOADED);
             resolve(img)
         }).
         catch((error)=>{
-            setImageState(img, ImageStates.ERROR_DOWNLOADING);
+            img.setState(ImageStates.ERROR_DOWNLOADING);
             console.error('stderr:', error.stderr);
             reject(error);
         });
@@ -287,13 +278,13 @@ function filterImagesAndAddToDownloadQueue(maxK){
         return;
     }
 
-    setImageState(image, ImageStates.SHOULD_DOWNLOAD_EVALUATION);
+    image.setState(ImageStates.SHOULD_DOWNLOAD_EVALUATION);
 
     if(image.contentLength>=(maxK*1000)){
-        setImageState(image, ImageStates.WILL_DOWNLOAD);
+        image.setState(ImageStates.WILL_DOWNLOAD);
         imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_PROCESS, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     }else{
-        setImageState(image, ImageStates.IGNORED);
+        image.setState(ImageStates.IGNORED);
         imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_PROCESS, imageQueues.QNames.IMAGES_TO_IGNORE);
     }
 }
@@ -349,7 +340,7 @@ const quitIfQueuesAreEmpty = ()=>{
 function createFolderStructureForImage(image, root) {
     return new Promise((resolve, reject) => {
         try {
-            setImageState(image, ImageStates.CREATING_FOLDERS);
+            image.setState(ImageStates.CREATING_FOLDERS);
             image.rootFolder = root;
 
             //const urlToParse = img.src;
@@ -370,11 +361,11 @@ function createFolderStructureForImage(image, root) {
             image.fileDirPath = image.rootFolder + Path.sep + image.dir + Path.sep + image.fileName;
             createDir(image.fileDirPath);
 
-            setImageState(image, ImageStates.FILE_SYSTEM_IS_READY);
+            image.setState(ImageStates.FILE_SYSTEM_IS_READY);
             resolve(image);
         }catch(error){
-            setImageState(image, ImageStates.ERROR_CREATING_FOLDERS);
-            addImageErrorReport(image, error);
+            image.setState(ImageStates.ERROR_CREATING_FOLDERS);
+            image.addErrorReport(error);
             reject(image);
         }
     });
@@ -388,7 +379,7 @@ const processQueueToCreateFolderStructure = ()=>{
 
     createFolderStructureForImage(imageToDownload, rootFolder).
     then((image)=>{
-        setImageState(image, ImageStates.AWAITING_DOWNLOAD);
+        image.setState(ImageStates.AWAITING_DOWNLOAD);
         // no Qs to move
     }).catch((image)=>{
         imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
@@ -402,19 +393,19 @@ const processDownloadImagesQ = ()=>{
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
-    setImageState(imageToDownload, ImageStates.ABOUT_TO_DOWNLOAD);
+    imageToDownload.setState(ImageStates.ABOUT_TO_DOWNLOAD);
 
     imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
 
     console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
     downloadFile(imageToDownload).
     then(()=>{
-        setImageState(imageToDownload, ImageStates.READY_TO_COMPRESS);
+        imageToDownload.setState(ImageStates.READY_TO_COMPRESS);
         imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.IMAGES_TO_COMPRESS);
     }).
     catch((error)=> {
-        setImageState(imageToDownload, ImageStates.ERROR_DOWNLOADING);
-        addImageErrorReport(imageToDownload, error)
+        imageToDownload.setState(ImageStates.ERROR_DOWNLOADING);
+        imageToDownload.addErrorReport(error);
         imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES);
     });
     //}
@@ -429,17 +420,17 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
 
     const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
 
-    setImageState(imageToFFmpeg, ImageStates.COMPRESSING_VIA_FFMPEG);
+    imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
 
     return new Promise((resolve, reject)=>{
         Shell.execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
-                setImageState(imageToFFmpeg, ImageStates.COMPRESSED_VIA_FFMPEG);
+                imageToFFmpeg.setState(ImageStates.COMPRESSED_VIA_FFMPEG);
                 imageToFFmpeg.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
                 resolve(imageToFFmpeg)
             }).catch((error)=> {
-                setImageState(imageToFFmpeg, ImageStates.ERROR_FFMPEG_COMPRESS);
-                addImageErrorReport(imageToFFmpeg, error)
+            imageToFFmpeg.setState(ImageStates.ERROR_FFMPEG_COMPRESS);
+            imageToFFmpeg.addErrorReport(error);
                 reject(imageToFFmpeg);
         })
     });
@@ -454,17 +445,17 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     // todo: allow configuration and profiles for image magick
     const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
 
-    setImageState(imageToCompress, ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
+    imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
     return new Promise((resolve, reject)=>{
         Shell.execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
             .then((result)=>{
-                setImageState(imageToCompress, ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
+                imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
                 imageToCompress.imagemagick = {inputFile: inputFileName, outputFile: outputFileName};
                 resolve(imageToCompress);
             }).catch((error)=> {
-                setImageState(imageToCompress, ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
-                addImageErrorReport(imageToCompress, error)
+            imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
+            imageToCompress.addErrorReport(error);
                 reject(imageToCompress);
         })
     });
@@ -477,7 +468,7 @@ const processCompressImagesQ = ()=>{
     if(imageToCompress==null){
         return;
     }
-    setImageState(imageToCompress, ImageStates.ABOUT_TO_COMPRESS);
+    imageToCompress.setState(ImageStates.ABOUT_TO_COMPRESS);
     imageQueues.moveFromQToQ(imageToCompress, imageQueues.QNames.IMAGES_TO_COMPRESS, imageQueues.QNames.COMPRESSING_IMAGES);
 
     const writtenImagePath = Path.parse(imageToCompress.fullFilePath);
