@@ -29,12 +29,16 @@ const Shell = require("./commandLineExec.js");
 const ImageDetails = require("./imageDetails.js");
 
 /*
+
+    WIP:
+        - refactoring out into classes - currently ImageDetails
+
     BUGS:
 
     TODOs:
     - NEXT
+        - split code into modules and classes
         - add output file paths and output file sizes to the img so that this is in the json output
-    - split code into modules and classes
     - typescript?
     - add tests for the modules and classes
     - configuration and defaults for hard coded values
