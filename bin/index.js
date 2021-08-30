@@ -175,6 +175,8 @@ image:
 // https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
 
 
+// todo: add to an http module as getHeaders
+// todo: wrap with a getImageHeaders
 function getImageHeaders(url) {
 
     const img = {src:url};
@@ -201,7 +203,8 @@ function getImageHeaders(url) {
   }
 
 
-
+// todo: create an http module and a downloadFile method which... given a url and an output path
+// call from a downloadImage method
   function downloadFile(img) {
 
     setImageState(img, ImageStates.DOWNLOADING)
@@ -227,6 +230,7 @@ function getImageHeaders(url) {
 
   }  
 
+  // todo: nove this to http module
 function getDomFromUrl(url){
 
     console.log("Getting "  + url);
@@ -425,6 +429,7 @@ const processDownloadImagesQ = ()=>{
 
 }
 
+// todo: move to an FFmpegWrapper class
 // TODO: document this command fully
 // add config to experiment with the different attributes for compression e.g. fps values, scale and resize
 // https://superuser.com/questions/556029/how-do-i-convert-a-video-to-gif-using-ffmpeg-with-reasonable-quality
@@ -448,6 +453,7 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     });
 }
 
+// todo: move to an ImageMagickWrapper class
 // todo: in the future allow custom commands to be added for images
 // todo: document this command fully
 // todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
