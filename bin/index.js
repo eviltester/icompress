@@ -18,6 +18,8 @@ const fetch = require('isomorphic-fetch');
 //https://github.com/jsdom/jsdom
 const { JSDOM } = require("jsdom");
 
+const HTTP = require("./httpWrapper.js");
+
 //https://nodejs.org/api/timers.html
 const { setInterval } = require("timers");
 
@@ -28,13 +30,15 @@ const ImageQueues = require("./imageQueues.js");
 const Shell = require("./commandLineExec.js");
 const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
-
+const FFMPEG = require("./ffmpegWrapper.js");
 const imageQueues = new ImageQueues();
+
+const ImageHTTP = require("./imageHttp.js");
 
 /*
 
     WIP:
-        - refactoring out into classes - currently ImageDetails
+        - refactoring out into classes
 
     BUGS:
 
@@ -112,87 +116,6 @@ if(options.pageurl){
     Started
  */
 
-// https://www.npmjs.com/package/jsdom
-// https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
-
-
-// todo: add to an http module as getHeaders
-// todo: wrap with a getImageHeaders
-function getImageHeaders(url) {
-
-    //const img = {src:url};
-    const img = new ImageDetails.Image();
-    img.setSrc(url);
-
-    return new Promise((resolve, reject) => {
-
-        img.setState(ImageStates.FETCHING_HEADERS);
-
-        fetch(url, {method: 'HEAD'}).
-        then(function(response) {
-            img.setState(ImageStates.FETCHED_HEADERS);
-            console.log(response.headers);
-            img.setContentLength(response.headers.get('content-length'));
-            img.setContentType(response.headers.get('Content-Type'));
-            resolve(img);
-        }).
-        catch((error)=>{
-            // todo: consider if setState should also allow a 'message', then the error report could be associated with the state change
-            img.setState(ImageStates.ERROR_FETCHING_HEADERS);
-            img.addErrorReport(error);
-            reject(error);
-        });
-
-    });
-  }
-
-
-// todo: create an http module and a downloadFile method which... given a url and an output path
-// call from a downloadImage method
-  function downloadFile(img) {
-
-    img.setState(ImageStates.DOWNLOADING);
-
-    return new Promise((resolve, reject) => {
-        const downloadTo = img.getFileDirPath() + Path.sep + img.getOriginalFileName();
-        const fileStream = FS.createWriteStream(downloadTo);
-        img.setFullFilePath(downloadTo);
-        fetch(img.getSrc()).
-        then((response)=>{
-            response.body.pipe(fileStream);
-            response.body.on("error", reject);
-            fileStream.on("finish", resolve);
-            img.setState(ImageStates.DOWNLOADED);
-            resolve(img)
-        }).
-        catch((error)=>{
-            img.setState(ImageStates.ERROR_DOWNLOADING);
-            console.error('stderr:', error.stderr);
-            reject(error);
-        });
-    });
-
-  }  
-
-  // todo: nove this to http module
-function getDomFromUrl(url){
-
-    console.log("Getting "  + url);
-
-    return new Promise((resolve, reject) => {
-
-        fetch(url).then((response) =>{            
-            return response.text();
-        }).then((text)=>{
-            resolve(new JSDOM(text))
-        }).catch((error)=>{
-            console.log("could not get " + url);
-            console.log(error);
-            reject(error);
-        })
-    });
-}
-
 // given a page
 // get the source and find all images
 // get all images and download those which are > 50K based on header to a folder
@@ -202,7 +125,7 @@ if(options.pageurl){
 
     console.log(options.pageurl)
     // todo build a queue of urls by scanning a site
-    getDomFromUrl(options.pageurl).
+    HTTP.getDomFromUrl(options.pageurl).
     then((dom)=>{
         const imgs=dom.window.document.querySelectorAll("img");
         for(const imageNode of imgs){
@@ -215,7 +138,7 @@ if(options.pageurl){
                 // image is relative
                 imageUrl = options.pageurl + divider + imageUrl;
             }
-            getImageHeaders(imageUrl)
+            ImageHTTP.getImageHeaders(imageUrl)
             .then((img)=>{
                 img.setFoundOnPageUrl(options.pageurl);
                 imageQueues.addToProcessQueue(img);
@@ -249,6 +172,7 @@ function filterImagesAndAddToDownloadQueue(maxK){
     }
 }
 
+// todo: add to ImagePersistance module
 function outputImageJsonFile(image) {
     //https://nodejs.dev/learn/writing-files-with-nodejs
     try {
@@ -266,6 +190,7 @@ function outputImageJsonFiles(imagesToOutput) {
     }
 }
 
+// todo: add to ExitBasedOnQueues module
 let nothingToDoCount=0;
 
 const quitIfQueuesAreEmpty = ()=>{
@@ -293,10 +218,9 @@ const quitIfQueuesAreEmpty = ()=>{
         outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
-
 }
 
-
+// todo: add to ImagePersistance module
 function createFolderStructureForImage(image, root) {
     return new Promise((resolve, reject) => {
         try {
@@ -332,6 +256,7 @@ function createFolderStructureForImage(image, root) {
     });
 }
 
+// todo: add to an ImageQueuesProcessing module
 const processQueueToCreateFolderStructure = ()=>{
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
@@ -348,6 +273,7 @@ const processQueueToCreateFolderStructure = ()=>{
 
 }
 
+// todo: add to an ImageQueuesProcessing module
 const processDownloadImagesQ = ()=>{
 
     const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
@@ -359,7 +285,7 @@ const processDownloadImagesQ = ()=>{
     imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
 
     console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
-    downloadFile(imageToDownload).
+    ImageHTTP.downloadImageFile(imageToDownload).
     then(()=>{
         imageToDownload.setState(ImageStates.READY_TO_COMPRESS);
         imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.IMAGES_TO_COMPRESS);
@@ -369,26 +295,21 @@ const processDownloadImagesQ = ()=>{
         imageToDownload.addErrorReport(error);
         imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES);
     });
-    //}
 
 }
 
-// todo: move to an FFmpegWrapper class
-// TODO: document this command fully
-// add config to experiment with the different attributes for compression e.g. fps values, scale and resize
-// https://superuser.com/questions/556029/how-do-i-convert-a-video-to-gif-using-ffmpeg-with-reasonable-quality
+// todo: move to an FFmpegImageWrapper class
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
-
-    const ffmpeg = 'ffmpeg -i ${inputFileName} -lavfi "mpdecimate,fps=3,scale=0:-1:flags=lanczos[x];[x]split[x1][x2];[x1]palettegen[p];[x2][p]paletteuse" -vsync 0 -y ${outputFileName}';
 
     imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
 
     return new Promise((resolve, reject)=>{
         const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
-        Shell.execParas(ffmpeg, commandDetails)
+        FFMPEG.compress(inputFileName, outputFileName)
+        //Shell.execParas(ffmpeg, commandDetails)
             .then((result)=>{
                 imageToFFmpeg.setState(ImageStates.COMPRESSED_VIA_FFMPEG);
-                imageToFFmpeg.addCommand(ffmpeg, commandDetails);
+                imageToFFmpeg.addCommand(result.ffmpeg, result.commandDetails);
                 resolve(imageToFFmpeg)
             }).catch((error)=> {
             imageToFFmpeg.setState(ImageStates.ERROR_FFMPEG_COMPRESS);
@@ -398,7 +319,8 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     });
 }
 
-// todo: move to an ImageMagickWrapper class
+// todo: create an ImageMagickWrapper that takes an input file and an output file e.g. ffmpegWrapper
+// todo: move to an ImageMagickImageWrapper class
 // todo: in the future allow custom commands to be added for images
 // todo: document this command fully
 // todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
@@ -424,7 +346,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     });
 }
 
-
+// todo: add to an ImageQueuesProcessing module
 const processCompressImagesQ = ()=>{
 
     const imageToCompress = imageQueues.findFirstImageWithState(ImageStates.READY_TO_COMPRESS, imageQueues.QNames.IMAGES_TO_COMPRESS);
@@ -440,13 +362,13 @@ const processCompressImagesQ = ()=>{
     // possibly use Path.relative() with "./" or preocess.cwd()
     const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
-    const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
+    const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
 
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
 
         ffmpegCompress(imageToCompress, inputFileName, outputFileName)
             .then((image)=> {
-                imageMagickCompress(image, outputFileName, compressedFileName)
+                imageMagickCompress(imageToCompress, outputFileName, compressedFileName)
                 .then((image)=> {
                     imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
                         outputImageJsonFile(image);
@@ -466,8 +388,11 @@ const processCompressImagesQ = ()=>{
     }
 };
 
+
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
 const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
+
+// todo: add to an ImageQueuesProcessing module
 const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
 const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);
