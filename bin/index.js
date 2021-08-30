@@ -31,6 +31,7 @@ const Shell = require("./commandLineExec.js");
 const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
 const FFMPEG = require("./ffmpegWrapper.js");
+const ImageMagick = require("./imageMagickWrapper.js");
 const imageQueues = new ImageQueues();
 
 const ImageHTTP = require("./imageHttp.js");
@@ -298,7 +299,7 @@ const processDownloadImagesQ = ()=>{
 
 }
 
-// todo: move to an FFmpegImageWrapper class
+// todo: move to an ImageCompressWrapper class
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
 
     imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
@@ -319,24 +320,19 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     });
 }
 
-// todo: create an ImageMagickWrapper that takes an input file and an output file e.g. ffmpegWrapper
-// todo: move to an ImageMagickImageWrapper class
+// todo: move to an ImageCompressWrapper class
 // todo: in the future allow custom commands to be added for images
 // todo: document this command fully
 // todo: allow config for the different compression options e.g. colours, colour depth, dither, etc.
 function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
 
-    // todo: allow configuration and profiles for image magick
-    const imagemagick = 'magick convert ${inputFileName} +dither -colors 32 -depth 8 ${outputFileName}';
-
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
     return new Promise((resolve, reject)=>{
-        const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
-        Shell.execParas(imagemagick, commandDetails)
+        ImageMagick.compress(inputFileName, outputFileName)
             .then((result)=>{
                 imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
-                imageToCompress.addCommand(imagemagick, commandDetails);
+                imageToCompress.addCommand(result.imagemagick, result.commandDetails);
                 resolve(imageToCompress);
             }).catch((error)=> {
             imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
@@ -364,6 +360,7 @@ const processCompressImagesQ = ()=>{
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
 
+    // todo: the if else should be in the ImageCompressWrapper class
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
 
         ffmpegCompress(imageToCompress, inputFileName, outputFileName)
