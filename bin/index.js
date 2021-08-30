@@ -178,15 +178,16 @@ function getImageHeaders(url) {
 
         fetch(url, {method: 'HEAD'}).
         then(function(response) {
-            setImageState(img,ImageStates.FETCHED_HEADERS);
+            img.setState(ImageStates.FETCHED_HEADERS);
             console.log(response.headers);
-            img.contentLength = response.headers.get('content-length');
-            img.type = response.headers.get('Content-Type');
+            img.setContentLength(response.headers.get('content-length'));
+            img.setContentType(response.headers.get('Content-Type'));
             resolve(img);
         }).
         catch((error)=>{
-            setImageState(img,ImageStates.ERROR_FETCHING_HEADERS);
-            addImageErrorReport(img, error);
+            // todo: consider if setState should also allow a 'message', then the error report could be associated with the state change
+            img.setState(ImageStates.ERROR_FETCHING_HEADERS);
+            img.addErrorReport(error);
             reject(error);
         });
 
@@ -198,7 +199,7 @@ function getImageHeaders(url) {
 // call from a downloadImage method
   function downloadFile(img) {
 
-    setImageState(img, ImageStates.DOWNLOADING)
+    img.setState(ImageStates.DOWNLOADING);
 
     return new Promise((resolve, reject) => {
         const downloadTo = img.fileDirPath + Path.sep + img.fileName;

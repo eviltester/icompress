@@ -28,4 +28,12 @@ module.exports = class ImageDetails{
     setFullFilePath(inputName) {
         this.fullFilePath = inputName;
     }
+
+    setContentLength(contentLength) {
+        this.contentLength = contentLength;
+    }
+
+    setContentType(contentType) {
+        this.contentType = contentType;
+    }
 }
