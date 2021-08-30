@@ -26,6 +26,7 @@ const Url = require('url').URL;
 
 const ImageQueues = require("./imageQueues.js");
 const Shell = require("./commandLineExec.js");
+const ImageDetails = require("./imageDetails.js");
 
 /*
     BUGS:
@@ -77,24 +78,12 @@ function ImageStatesEnum(){
 
 const ImageStates = new ImageStatesEnum();
 
-// todo: setImageState and addImageErrorReport should be on an Image class
+// todo: backwards compatibility until full class created
 const setImageState = (image, newState)=>{
-
-    if(image.states==undefined){
-        image.states = [];
-    }
-
-    console.log(image.src);
-    console.log(newState);
-
-    image.state = newState;
-    image.states.push(newState);
+    image.setState(newState);
 }
-
-// named 'add' instead of 'set' to allow scope for expanding to multiple error reports in the future e.g. we may have some optional states
 const addImageErrorReport = (image, error)=> {
-    console.log(error);
-    image.errorReport = error;
+    image.addErrorReport(error);
 };
 
 
@@ -131,12 +120,12 @@ const options = yargs
  if(options.inputname){
     const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
-    const dir = "./" + parsed.dir;    
-    imagesToCompress.push({
-        src:"local/"+options.inputname,
-        fullFilePath:options.inputname,
-        state:ImageStates.READY_TO_COMPRESS
-    });
+    const dir = "./" + parsed.dir;
+    const inputImage = new ImageDetails();
+    inputImage.setSrc("local/"+options.inputname);
+    inputImage.setFullFilePath(options.inputname);
+    inputImage.setState(ImageStates.READY_TO_COMPRESS);
+    imagesToCompress.push(inputImage);
  }
 
 
@@ -179,7 +168,9 @@ image:
 // todo: wrap with a getImageHeaders
 function getImageHeaders(url) {
 
-    const img = {src:url};
+    //const img = {src:url};
+    const img = new ImageDetails();
+    img.setSrc(url);
 
     return new Promise((resolve, reject) => {
 
