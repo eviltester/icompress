@@ -252,7 +252,7 @@ function filterImagesAndAddToDownloadQueue(maxK){
 function outputImageJsonFile(image) {
     //https://nodejs.dev/learn/writing-files-with-nodejs
     try {
-        const data = FS.writeFileSync(image.fullFilePath + ".json", JSON.stringify(image, null, 2));
+        const data = FS.writeFileSync(image.getFullFilePath() + ".json", JSON.stringify(image, null, 2));
         //file written successfully
     } catch (err) {
         console.error(err)
