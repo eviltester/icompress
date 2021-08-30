@@ -27,6 +27,9 @@ const Url = require('url').URL;
 const ImageQueues = require("./imageQueues.js");
 const Shell = require("./commandLineExec.js");
 const ImageDetails = require("./imageDetails.js");
+const ImageStates = ImageDetails.States;
+
+const imageQueues = new ImageQueues();
 
 /*
 
@@ -51,36 +54,8 @@ const ImageDetails = require("./imageDetails.js");
  */
 
 
-const imageQueues = new ImageQueues();
 
-function ImageStatesEnum(){
 
-    this.FETCHING_HEADERS = "FETCHING_HEADERS";
-    this.FETCHED_HEADERS = "FETCHED_HEADERS";
-    this.SHOULD_DOWNLOAD_EVALUATION = "SHOULD_DOWNLOAD_EVALUATION";
-    this.WILL_DOWNLOAD = "WILL_DOWNLOAD";
-    this.CREATING_FOLDERS = "CREATING_FOLDERS";
-    this.FILE_SYSTEM_IS_READY = "FILE_SYSTEM_IS_READY";
-    this.AWAITING_DOWNLOAD = "AWAITING_DOWNLOAD";
-    this.ABOUT_TO_DOWNLOAD = "ABOUT_TO_DOWNLOAD";
-    this.IGNORED = "IGNORED";
-    this.DOWNLOADING = "DOWNLOADING";
-    this.DOWNLOADED = "DOWNLOADED";
-    this.READY_TO_COMPRESS = "READY_TO_COMPRESS";
-    this.ABOUT_TO_COMPRESS = "ABOUT_TO_COMPRESS";
-    this.COMPRESSING_VIA_FFMPEG = "COMPRESSING_VIA_FFMPEG";
-    this.COMPRESSED_VIA_FFMPEG = "COMPRESSED_VIA_FFMPEG";
-    this.COMPRESSING_VIA_IMAGEMAGICK = "COMPRESSING_VIA_IMAGEMAGICK";
-    this.COMPRESSED_VIA_IMAGEMAGICK = "COMPRESSED_VIA_IMAGEMAGICK";
-
-    this.ERROR_FETCHING_HEADERS = "ERROR_FETCHING_HEADERS";
-    this.ERROR_CREATING_FOLDERS = "ERROR_CREATING_FOLDERS";
-    this.ERROR_DOWNLOADING = "ERROR_DOWNLOADING";
-    this.ERROR_FFMPEG_COMPRESS = "ERROR_FFMPEG_COMPRESS";
-    this.ERROR_IMAGEMAGICK_COMPRESS = "ERROR_IMAGEMAGICK_COMPRESS";
-}
-
-const ImageStates = new ImageStatesEnum();
 
 /*
     Directory/File Management
@@ -116,7 +91,7 @@ const options = yargs
     const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;
-    const inputImage = new ImageDetails();
+    const inputImage = new ImageDetails.Image();
     inputImage.setSrc("local/"+options.inputname);
     inputImage.setFullFilePath(options.inputname);
     inputImage.setState(ImageStates.READY_TO_COMPRESS);
@@ -137,24 +112,6 @@ if(options.pageurl){
     Started
  */
 
-
-
-
-// TODO: start making image an object/class
-/*
-
-
-image:
-   src // download url from src attribute
-   contentLength // header reported by server
-   type // type reported by server
-   dir  // directory plan to write to
-   fileName // planned filename to use
-   fullFilePath // actual file path for the file
-   foundOnPage  // url of parent page
-
-*/
-
 // https://www.npmjs.com/package/jsdom
 // https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
 
@@ -164,7 +121,7 @@ image:
 function getImageHeaders(url) {
 
     //const img = {src:url};
-    const img = new ImageDetails();
+    const img = new ImageDetails.Image();
     img.setSrc(url);
 
     return new Promise((resolve, reject) => {
@@ -197,10 +154,10 @@ function getImageHeaders(url) {
     img.setState(ImageStates.DOWNLOADING);
 
     return new Promise((resolve, reject) => {
-        const downloadTo = img.fileDirPath + Path.sep + img.fileName;
+        const downloadTo = img.getFileDirPath() + Path.sep + img.getOriginalFileName();
         const fileStream = FS.createWriteStream(downloadTo);
-        img.fullFilePath = downloadTo;
-        fetch(img.src).
+        img.setFullFilePath(downloadTo);
+        fetch(img.getSrc()).
         then((response)=>{
             response.body.pipe(fileStream);
             response.body.on("error", reject);
@@ -240,6 +197,7 @@ function getDomFromUrl(url){
 // get the source and find all images
 // get all images and download those which are > 50K based on header to a folder
 
+// todo: create a page scanning queue and add the url there, then a queue processor, then we can easily add a set of urls, and fairly quickly build a set of urls to scan
 if(options.pageurl){
 
     console.log(options.pageurl)
@@ -259,9 +217,7 @@ if(options.pageurl){
             }
             getImageHeaders(imageUrl)
             .then((img)=>{
-                img.foundOnPage = options.pageurl;
-                console.log("found image");
-                console.log(img);
+                img.setFoundOnPageUrl(options.pageurl);
                 imageQueues.addToProcessQueue(img);
 
             }).catch((error)=>{console.log("image error"); console.log(error)});    
@@ -284,7 +240,7 @@ function filterImagesAndAddToDownloadQueue(maxK){
 
     image.setState(ImageStates.SHOULD_DOWNLOAD_EVALUATION);
 
-    if(image.contentLength>=(maxK*1000)){
+    if(image.getContentLength()>=(maxK*1000)){
         image.setState(ImageStates.WILL_DOWNLOAD);
         imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_PROCESS, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     }else{
@@ -345,25 +301,26 @@ function createFolderStructureForImage(image, root) {
     return new Promise((resolve, reject) => {
         try {
             image.setState(ImageStates.CREATING_FOLDERS);
-            image.rootFolder = root;
+            image.setRootFolder(root);
 
             //const urlToParse = img.src;
-            const urlToParse = image.foundOnPage;
+            const urlToParse = image.getFoundOnPage();
 
             // create a page folder
             const pathParts = new Url(urlToParse).pathname.split('/').filter(item => item !="");
             const dir = pathParts.join('_');
-            image.dir = dir;
+            image.setUrlPath(dir);
 
             // create an image name folder
-            const fileNamePathParts = new Url(image.src).pathname.split('/');
+            const fileNamePathParts = new Url(image.getSrc()).pathname.split('/');
             const fileName = fileNamePathParts[fileNamePathParts.length - 1];
-            image.fileName = fileName;
+            image.setOriginalFileName(fileName);
 
             console.log("creating dir " + dir);
             // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
-            image.fileDirPath = image.rootFolder + Path.sep + image.dir + Path.sep + image.fileName;
-            createDir(image.fileDirPath);
+            const fileDirPath = image.getRootFolder() + Path.sep + image.getUrlPath() + Path.sep + image.getOriginalFileName();
+            image.setFileDirPath(fileDirPath);
+            createDir(fileDirPath);
 
             image.setState(ImageStates.FILE_SYSTEM_IS_READY);
             resolve(image);
@@ -427,10 +384,11 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName) {
     imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
 
     return new Promise((resolve, reject)=>{
-        Shell.execParas(ffmpeg, {inputFileName: inputFileName, outputFileName: outputFileName})
+        const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
+        Shell.execParas(ffmpeg, commandDetails)
             .then((result)=>{
                 imageToFFmpeg.setState(ImageStates.COMPRESSED_VIA_FFMPEG);
-                imageToFFmpeg.ffmpeg = {inputFile: inputFileName, outputFile: outputFileName};
+                imageToFFmpeg.addCommand(ffmpeg, commandDetails);
                 resolve(imageToFFmpeg)
             }).catch((error)=> {
             imageToFFmpeg.setState(ImageStates.ERROR_FFMPEG_COMPRESS);
@@ -452,10 +410,11 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName) {
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
     return new Promise((resolve, reject)=>{
-        Shell.execParas(imagemagick, {inputFileName: inputFileName, outputFileName: outputFileName})
+        const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
+        Shell.execParas(imagemagick, commandDetails)
             .then((result)=>{
                 imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
-                imageToCompress.imagemagick = {inputFile: inputFileName, outputFile: outputFileName};
+                imageToCompress.addCommand(imagemagick, commandDetails);
                 resolve(imageToCompress);
             }).catch((error)=> {
             imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
@@ -475,15 +434,15 @@ const processCompressImagesQ = ()=>{
     imageToCompress.setState(ImageStates.ABOUT_TO_COMPRESS);
     imageQueues.moveFromQToQ(imageToCompress, imageQueues.QNames.IMAGES_TO_COMPRESS, imageQueues.QNames.COMPRESSING_IMAGES);
 
-    const writtenImagePath = Path.parse(imageToCompress.fullFilePath);
+    const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
     const pathPrefix = "./";
 
     // possibly use Path.relative() with "./" or preocess.cwd()
-    const inputFileName = pathPrefix + imageToCompress.fullFilePath;
+    const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.fileName;
 
-    if(AnimatedGifDetector(FS.readFileSync(imageToCompress.fullFilePath))){
+    if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
 
         ffmpegCompress(imageToCompress, inputFileName, outputFileName)
             .then((image)=> {

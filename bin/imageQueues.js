@@ -57,7 +57,7 @@ module.exports = class ImageQueues{
         const qToUse = this.Qs[queueName];
 
         for(const image of qToUse){
-            if(image.state==desiredState){
+            if(image.getState()==desiredState){
                 return image;
             }
         }
