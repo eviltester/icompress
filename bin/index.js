@@ -117,7 +117,7 @@ if(options.pageurl){
             ImageHTTP.getImageHeaders(imageUrl)
             .then((img)=>{
                 img.setFoundOnPageUrl(options.pageurl);
-                imageQueues.addToProcessQueue(img);
+                imageQueues.addToQueue(img, imageQueues.QNames.IMAGES_TO_PROCESS);
 
             }).catch((error)=>{console.log("image error"); console.log(error)});    
         }
@@ -128,11 +128,15 @@ if(options.pageurl){
     });
 }
 
-
+function findFirstImageWithState(state, qName){
+    return imageQueues.findFirstInQWhere(qName, (image) => {return image.getState()==state})
+}
 
 function filterImagesAndAddToDownloadQueue(maxK){
 
-    const image = imageQueues.findFirstImageWithState(ImageStates.FETCHED_HEADERS, imageQueues.QNames.IMAGES_TO_PROCESS);
+    //const image = imageQueues.findFirstInQWhere(imageQueues.QNames.IMAGES_TO_PROCESS, (image) => {return image.getState()==ImageStates.FETCHED_HEADERS})
+
+    const image = findFirstImageWithState(ImageStates.FETCHED_HEADERS, imageQueues.QNames.IMAGES_TO_PROCESS);
     if(image==null){
         return;
     }
@@ -157,7 +161,13 @@ let nothingToDoCount=0;
 const quitIfQueuesAreEmpty = ()=>{
     let shouldIQuit = false;
 
-    if(imageQueues.allProcessIngQueuesAreEmpty()){
+    if(imageQueues.allGivenQueuesAreEmpty([
+                            imageQueues.QNames.IMAGES_TO_DOWNLOAD,
+                            imageQueues.QNames.IMAGES_TO_PROCESS,
+                            imageQueues.QNames.IMAGES_TO_COMPRESS,
+                            imageQueues.QNames.DOWNLOADING_IMAGES,
+                            imageQueues.QNames.COMPRESSING_IMAGES
+    ])){
         shouldIQuit= true;
         nothingToDoCount++;
     }else{
@@ -176,7 +186,7 @@ const quitIfQueuesAreEmpty = ()=>{
     if(shouldIQuit){
         console.log(imageQueues.reportOnQueueLengths());
         console.log(imageQueues.reportOnAllQueueContents())
-        Persist.outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
+        Persist.outputImageJsonFiles(imageQueues.getItemsFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
 }
@@ -185,7 +195,7 @@ const quitIfQueuesAreEmpty = ()=>{
 
 // todo: add to an ImageQueuesProcessing module
 const processQueueToCreateFolderStructure = ()=>{
-    const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
+    const imageToDownload = findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
@@ -203,7 +213,7 @@ const processQueueToCreateFolderStructure = ()=>{
 // todo: add to an ImageQueuesProcessing module
 const processDownloadImagesQ = ()=>{
 
-    const imageToDownload = imageQueues.findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
+    const imageToDownload = findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
@@ -228,7 +238,7 @@ const processDownloadImagesQ = ()=>{
 
 const processCompressImagesQ = ()=>{
 
-    const imageToCompress = imageQueues.findFirstImageWithState(ImageStates.READY_TO_COMPRESS, imageQueues.QNames.IMAGES_TO_COMPRESS);
+    const imageToCompress = findFirstImageWithState(ImageStates.READY_TO_COMPRESS, imageQueues.QNames.IMAGES_TO_COMPRESS);
     if(imageToCompress==null){
         return;
     }

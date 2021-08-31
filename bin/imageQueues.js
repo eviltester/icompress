@@ -4,12 +4,12 @@
 // if it didn't then queues would be renamed to images
 
 function ImageQueueNamesEnum(){
-    this.IMAGES_TO_PROCESS = "IMAGES_TO_PROCESS";
-    this.IMAGES_TO_DOWNLOAD = "IMAGES_TO_DOWNLOAD";
-    this.DOWNLOADING_IMAGES = "DOWNLOADING_IMAGES";
-    this.IMAGES_TO_COMPRESS = "IMAGES_TO_COMPRESS";
+    this.IMAGES_TO_PROCESS = "IMAGES_TO_PROCESS";   // found images
+    this.IMAGES_TO_DOWNLOAD = "IMAGES_TO_DOWNLOAD"; // images which are big enough to process and download them
+    this.DOWNLOADING_IMAGES = "DOWNLOADING_IMAGES"; // images we are currently downloading
+    this.IMAGES_TO_COMPRESS = "IMAGES_TO_COMPRESS"; // images which we need to compress
     this.COMPRESSING_IMAGES = "COMPRESSING_IMAGES";
-    this.IMAGES_TO_IGNORE = "IMAGES_TO_IGNORE";
+    this.IMAGES_TO_IGNORE = "IMAGES_TO_IGNORE"; // images which we will not process for some reason
     this.COMPRESSED_IMAGES = "COMPRESSED_IMAGES";
     this.ERROR_PROCESSING_IMAGES = "ERROR_PROCESSING_IMAGES";
 }
@@ -18,12 +18,12 @@ const QueueNames = new ImageQueueNamesEnum();
 
 module.exports = class ImageQueues{
 
-    #imagesToProcess; // found images
-    #imagesToDownload; // images which are big enough to process and download them
-    #downloadingImages; // images we are currently downloading
-    #imagesToCompress; // images which we need to compress
+    #imagesToProcess;
+    #imagesToDownload;
+    #downloadingImages;
+    #imagesToCompress;
     #compressingImages;
-    #imagesToLeaveAlone; // images which we need to compress
+    #imagesToLeaveAlone;
     #compressedImages;
     #errorProcessingImages;
 
@@ -50,22 +50,15 @@ module.exports = class ImageQueues{
     }
 
 
-
-    // use QName rather than an actual Q
-    findFirstImageWithState(desiredState, queueName){
+    findFirstInQWhere(queueName, matchingFunc){
 
         const qToUse = this.Qs[queueName];
 
-        for(const image of qToUse){
-            if(image.getState()==desiredState){
-                return image;
-            }
-        }
-        return null;
+        return qToUse.find(matchingFunc);
     }
 
     // use QName rather than an actual Q
-    moveFromQToQ(imageToMove, fromQName, toQName){
+    moveFromQToQ(thingToMove, fromQName, toQName){
         let fromQ = this.Qs[fromQName];
         let toQ = this.Qs[toQName];
 
@@ -78,31 +71,26 @@ module.exports = class ImageQueues{
             toQ=toQName;
         }
 
-        toQ.push(imageToMove);
-        fromQ.splice(fromQ.indexOf(imageToMove), 1);
+        toQ.push(thingToMove);
+        fromQ.splice(fromQ.indexOf(thingToMove), 1);
     }
 
     reportOnQueueLengths(){
         const lines = [];
-        lines.push(`To Process: ${this.#imagesToProcess.length}`);
-        lines.push(`To Download: ${this.#imagesToDownload.length}`);
-        lines.push(`Downloading: ${this.#downloadingImages.length}`);
-        lines.push(`To Compress: ${this.#imagesToCompress.length}`);
-        lines.push(`Compressing: ${this.#compressingImages.length}`);
-        lines.push(`Done: ${this.#compressedImages.length}`);
-        lines.push(`Ignored: ${this.#imagesToLeaveAlone.length}`);
-        lines.push(`Errors: ${this.#errorProcessingImages.length}`);
+        for(const qName in this.Qs){
+            lines.push(`${qName}: ${this.Qs[qName].length}`);
+        }
 
         return lines.join("\n");
     }
 
-    allProcessIngQueuesAreEmpty(){
-        return(
-            this.#imagesToProcess.length===0 &&
-            this.#imagesToCompress.length===0 &&
-            this.#imagesToDownload.length===0 &&
-            this.#downloadingImages.length===0 &&
-            this.#compressingImages.length===0);
+    allGivenQueuesAreEmpty(qNames){
+        for(const qName of qNames){
+            if(this.Qs[qName].length!=0){
+                return false;
+            }
+        }
+        return true;
     }
 
     reportOnQueueContents(queueName){
@@ -124,12 +112,12 @@ module.exports = class ImageQueues{
         return reportLines.join("\n");
     }
 
-    getImagesFromQueue(qName) {
+    getItemsFromQueue(qName) {
         const queue = this.Qs[qName];
         return queue.map( (image) => image);
     }
 
-    addToProcessQueue(image) {
-        this.#imagesToProcess.push(image);
+    addToQueue(item, qName) {
+        this.Qs[qName].push(item);
     }
 }
