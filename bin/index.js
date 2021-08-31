@@ -22,6 +22,7 @@ const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
 const imageQueues = new ImageQueues();
 const CompressImage = require("./imageCompression");
+const Persist = require("./imagePersistence");
 
 const ImageHTTP = require("./imageHttp.js");
 
@@ -47,21 +48,7 @@ const ImageHTTP = require("./imageHttp.js");
     - GUI/App to make it easier e.g. add url, scan, save progress, interrupt and restart, rescan etc.
  */
 
-/*
-    Directory/File Management
 
- */
-
-function createDir(dir){
-    console.log("creating: "  + dir);
-    try {
-        if (!FS.existsSync(dir)) {
-            FS.mkdirSync(dir, { recursive: true }); // create all subdirectories
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
 
 
 /*
@@ -71,6 +58,9 @@ function createDir(dir){
 // todo: check if ffmpeg and imagemagick are installed, if not then exit with error messages
 // todo: have a 'retry' for any of the images in an output state file which were in an 'error' state and pick up from the last valid state
 // todo: add an output folder option rather than always using the current folder
+// todo: given a sitemap, scan all the pages listed in the sitemap - file or url
+// todo: given a file with a list of page urls, process those
+// todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
@@ -95,7 +85,7 @@ let rootFolder = "";
 if(options.pageurl){
     const givenPageUrl = new Url(options.pageurl);
     rootFolder = givenPageUrl.hostname;
-    createDir(rootFolder);
+    Persist.createDir(rootFolder);
 }
 
 /*
@@ -158,23 +148,8 @@ function filterImagesAndAddToDownloadQueue(maxK){
     }
 }
 
-// todo: add to ImagePersistance module
-function outputImageJsonFile(image) {
-    //https://nodejs.dev/learn/writing-files-with-nodejs
-    try {
-        const data = FS.writeFileSync(image.getFullFilePath() + ".json", JSON.stringify(image, null, 2));
-        //file written successfully
-    } catch (err) {
-        console.error(err)
-    }
-}
 
-function outputImageJsonFiles(imagesToOutput) {
 
-    for(const image of imagesToOutput){
-        outputImageJsonFile(image);
-    }
-}
 
 // todo: add to ExitBasedOnQueues module
 let nothingToDoCount=0;
@@ -201,46 +176,12 @@ const quitIfQueuesAreEmpty = ()=>{
     if(shouldIQuit){
         console.log(imageQueues.reportOnQueueLengths());
         console.log(imageQueues.reportOnAllQueueContents())
-        outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
+        Persist.outputImageJsonFiles(imageQueues.getImagesFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
 }
 
-// todo: add to ImagePersistance module
-function createFolderStructureForImage(image, root) {
-    return new Promise((resolve, reject) => {
-        try {
-            image.setState(ImageStates.CREATING_FOLDERS);
-            image.setRootFolder(root);
 
-            //const urlToParse = img.src;
-            const urlToParse = image.getFoundOnPage();
-
-            // create a page folder
-            const pathParts = new Url(urlToParse).pathname.split('/').filter(item => item !="");
-            const dir = pathParts.join('_');
-            image.setUrlPath(dir);
-
-            // create an image name folder
-            const fileNamePathParts = new Url(image.getSrc()).pathname.split('/');
-            const fileName = fileNamePathParts[fileNamePathParts.length - 1];
-            image.setOriginalFileName(fileName);
-
-            console.log("creating dir " + dir);
-            // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
-            const fileDirPath = image.getRootFolder() + Path.sep + image.getUrlPath() + Path.sep + image.getOriginalFileName();
-            image.setFileDirPath(fileDirPath);
-            createDir(fileDirPath);
-
-            image.setState(ImageStates.FILE_SYSTEM_IS_READY);
-            resolve(image);
-        }catch(error){
-            image.setState(ImageStates.ERROR_CREATING_FOLDERS);
-            image.addErrorReport(error);
-            reject(image);
-        }
-    });
-}
 
 // todo: add to an ImageQueuesProcessing module
 const processQueueToCreateFolderStructure = ()=>{
@@ -249,7 +190,7 @@ const processQueueToCreateFolderStructure = ()=>{
         return;
     }
 
-    createFolderStructureForImage(imageToDownload, rootFolder).
+    Persist.createFolderStructureForImage(imageToDownload, rootFolder).
     then((image)=>{
         image.setState(ImageStates.AWAITING_DOWNLOAD);
         // no Qs to move
@@ -297,7 +238,7 @@ const processCompressImagesQ = ()=>{
     CompressImage.compress(imageToCompress).
     then((image)=>{
         imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
-        outputImageJsonFile(image);
+        Persist.outputImageJsonFile(image);
     }).catch((image)=>{
         imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
     });
