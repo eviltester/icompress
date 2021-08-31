@@ -17,14 +17,25 @@ const { setInterval } = require("timers");
 // https://nodejs.org/api/url.html
 const Url = require('url').URL;
 
+
 const ImageQueues = require("./imageQueues.js");
 const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
-const imageQueues = new ImageQueues();
+
 const CompressImage = require("./imageCompression");
 const Persist = require("./imagePersistence");
 
 const ImageHTTP = require("./imageHttp.js");
+
+let ImageQNames = [];
+for(const aQName of Object.keys(ImageQueues.QueueNames)){
+    if(ImageQueues.QueueNames.hasOwnProperty(aQName)){
+        ImageQNames.push(aQName);
+    }
+}
+
+const Queues = require("./qManager");
+const imageQueues = new Queues.QManager(ImageQNames);
 
 /*
 
@@ -117,7 +128,7 @@ if(options.pageurl){
             ImageHTTP.getImageHeaders(imageUrl)
             .then((img)=>{
                 img.setFoundOnPageUrl(options.pageurl);
-                imageQueues.addToQueue(img, imageQueues.QNames.IMAGES_TO_PROCESS);
+                imageQueues.addToQueue(img, ImageQueues.QueueNames.IMAGES_TO_PROCESS);
 
             }).catch((error)=>{console.log("image error"); console.log(error)});    
         }
@@ -134,9 +145,9 @@ function findFirstImageWithState(state, qName){
 
 function filterImagesAndAddToDownloadQueue(maxK){
 
-    //const image = imageQueues.findFirstInQWhere(imageQueues.QNames.IMAGES_TO_PROCESS, (image) => {return image.getState()==ImageStates.FETCHED_HEADERS})
+    //const image = imageQueues.findFirstInQWhere(ImageQueues.QueueNames.IMAGES_TO_PROCESS, (image) => {return image.getState()==ImageStates.FETCHED_HEADERS})
 
-    const image = findFirstImageWithState(ImageStates.FETCHED_HEADERS, imageQueues.QNames.IMAGES_TO_PROCESS);
+    const image = findFirstImageWithState(ImageStates.FETCHED_HEADERS, ImageQueues.QueueNames.IMAGES_TO_PROCESS);
     if(image==null){
         return;
     }
@@ -145,10 +156,10 @@ function filterImagesAndAddToDownloadQueue(maxK){
 
     if(image.getContentLength()>=(maxK*1000)){
         image.setState(ImageStates.WILL_DOWNLOAD);
-        imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_PROCESS, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
+        imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.IMAGES_TO_PROCESS, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD);
     }else{
         image.setState(ImageStates.IGNORED);
-        imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_PROCESS, imageQueues.QNames.IMAGES_TO_IGNORE);
+        imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.IMAGES_TO_PROCESS, ImageQueues.QueueNames.IMAGES_TO_IGNORE);
     }
 }
 
@@ -162,11 +173,11 @@ const quitIfQueuesAreEmpty = ()=>{
     let shouldIQuit = false;
 
     if(imageQueues.allGivenQueuesAreEmpty([
-                            imageQueues.QNames.IMAGES_TO_DOWNLOAD,
-                            imageQueues.QNames.IMAGES_TO_PROCESS,
-                            imageQueues.QNames.IMAGES_TO_COMPRESS,
-                            imageQueues.QNames.DOWNLOADING_IMAGES,
-                            imageQueues.QNames.COMPRESSING_IMAGES
+                            ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD,
+                            ImageQueues.QueueNames.IMAGES_TO_PROCESS,
+                            ImageQueues.QueueNames.IMAGES_TO_COMPRESS,
+                            ImageQueues.QueueNames.DOWNLOADING_IMAGES,
+                            ImageQueues.QueueNames.COMPRESSING_IMAGES
     ])){
         shouldIQuit= true;
         nothingToDoCount++;
@@ -186,7 +197,7 @@ const quitIfQueuesAreEmpty = ()=>{
     if(shouldIQuit){
         console.log(imageQueues.reportOnQueueLengths());
         console.log(imageQueues.reportOnAllQueueContents())
-        Persist.outputImageJsonFiles(imageQueues.getItemsFromQueue(imageQueues.QNames.COMPRESSED_IMAGES));
+        Persist.outputImageJsonFiles(imageQueues.getItemsFromQueue(ImageQueues.QueueNames.COMPRESSED_IMAGES));
         process.exit(0); // OK I Quit
     }
 }
@@ -195,7 +206,7 @@ const quitIfQueuesAreEmpty = ()=>{
 
 // todo: add to an ImageQueuesProcessing module
 const processQueueToCreateFolderStructure = ()=>{
-    const imageToDownload = findFirstImageWithState(ImageStates.WILL_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
+    const imageToDownload = findFirstImageWithState(ImageStates.WILL_DOWNLOAD, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
@@ -205,7 +216,7 @@ const processQueueToCreateFolderStructure = ()=>{
         image.setState(ImageStates.AWAITING_DOWNLOAD);
         // no Qs to move
     }).catch((image)=>{
-        imageQueues.moveFromQToQ(image, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
+        imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD, ImageQueues.QueueNames.ERROR_PROCESSING_IMAGES)
     });
 
 }
@@ -213,24 +224,24 @@ const processQueueToCreateFolderStructure = ()=>{
 // todo: add to an ImageQueuesProcessing module
 const processDownloadImagesQ = ()=>{
 
-    const imageToDownload = findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, imageQueues.QNames.IMAGES_TO_DOWNLOAD);
+    const imageToDownload = findFirstImageWithState(ImageStates.AWAITING_DOWNLOAD, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD);
     if(imageToDownload==null){ // nothing in the Queue waiting to be downloaded
         return;
     }
 
     imageToDownload.setState(ImageStates.ABOUT_TO_DOWNLOAD);
-    imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.IMAGES_TO_DOWNLOAD, imageQueues.QNames.DOWNLOADING_IMAGES);
+    imageQueues.moveFromQToQ(imageToDownload, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD, ImageQueues.QueueNames.DOWNLOADING_IMAGES);
 
-    console.log(imageQueues.reportOnQueueContents(imageQueues.QNames.IMAGES_TO_DOWNLOAD));
+    console.log(imageQueues.reportOnQueueContents(ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD));
     ImageHTTP.downloadImageFile(imageToDownload).
     then(()=>{
         imageToDownload.setState(ImageStates.READY_TO_COMPRESS);
-        imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.IMAGES_TO_COMPRESS);
+        imageQueues.moveFromQToQ(imageToDownload, ImageQueues.QueueNames.DOWNLOADING_IMAGES, ImageQueues.QueueNames.IMAGES_TO_COMPRESS);
     }).
     catch((error)=> {
         imageToDownload.setState(ImageStates.ERROR_DOWNLOADING);
         imageToDownload.addErrorReport(error);
-        imageQueues.moveFromQToQ(imageToDownload, imageQueues.QNames.DOWNLOADING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES);
+        imageQueues.moveFromQToQ(imageToDownload, ImageQueues.QueueNames.DOWNLOADING_IMAGES, ImageQueues.QueueNames.ERROR_PROCESSING_IMAGES);
     });
 
 }
@@ -238,19 +249,19 @@ const processDownloadImagesQ = ()=>{
 
 const processCompressImagesQ = ()=>{
 
-    const imageToCompress = findFirstImageWithState(ImageStates.READY_TO_COMPRESS, imageQueues.QNames.IMAGES_TO_COMPRESS);
+    const imageToCompress = findFirstImageWithState(ImageStates.READY_TO_COMPRESS, ImageQueues.QueueNames.IMAGES_TO_COMPRESS);
     if(imageToCompress==null){
         return;
     }
     imageToCompress.setState(ImageStates.ABOUT_TO_COMPRESS);
-    imageQueues.moveFromQToQ(imageToCompress, imageQueues.QNames.IMAGES_TO_COMPRESS, imageQueues.QNames.COMPRESSING_IMAGES);
+    imageQueues.moveFromQToQ(imageToCompress, ImageQueues.QueueNames.IMAGES_TO_COMPRESS, ImageQueues.QueueNames.COMPRESSING_IMAGES);
 
     CompressImage.compress(imageToCompress).
     then((image)=>{
-        imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.COMPRESSED_IMAGES);
+        imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.COMPRESSING_IMAGES, ImageQueues.QueueNames.COMPRESSED_IMAGES);
         Persist.outputImageJsonFile(image);
     }).catch((image)=>{
-        imageQueues.moveFromQToQ(image, imageQueues.QNames.COMPRESSING_IMAGES, imageQueues.QNames.ERROR_PROCESSING_IMAGES)
+        imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.COMPRESSING_IMAGES, ImageQueues.QueueNames.ERROR_PROCESSING_IMAGES)
     });
 
 };
