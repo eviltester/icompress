@@ -18,6 +18,7 @@ const { setInterval } = require("timers");
 const Url = require('url').URL;
 
 
+const Queues = require("./qManager");
 const ImageQueues = require("./imageQueues.js");
 const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
@@ -27,14 +28,7 @@ const Persist = require("./imagePersistence");
 
 const ImageHTTP = require("./imageHttp.js");
 
-let ImageQNames = [];
-for(const aQName of Object.keys(ImageQueues.QueueNames)){
-    if(ImageQueues.QueueNames.hasOwnProperty(aQName)){
-        ImageQNames.push(aQName);
-    }
-}
-
-const Queues = require("./qManager");
+const ImageQNames = Object.getOwnPropertyNames(ImageQueues.QueueNames);
 const imageQueues = new Queues.QManager(ImageQNames);
 
 /*
@@ -108,6 +102,7 @@ if(options.pageurl){
 // get all images and download those which are > 50K based on header to a folder
 
 // todo: create a page scanning queue and add the url there, then a queue processor, then we can easily add a set of urls, and fairly quickly build a set of urls to scan
+//todo: use QManager to create queues for pages FOUND_PAGES, SCANNING_PAGES, PAGES_IN_ERROR, SCANNED_PAGES also need a Page object ()
 if(options.pageurl){
 
     console.log(options.pageurl)
