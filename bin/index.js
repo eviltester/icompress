@@ -32,6 +32,11 @@ const Persist = require("./imagePersistence");
 const ImageQNames = Object.getOwnPropertyNames(ImageQueues.QueueNames);
 const imageQueues = new Queues.QManager(ImageQNames);
 
+
+// https://www.npmjs.com/package/sitemapper
+const Sitemapper = require('sitemapper');
+const sitemap = new Sitemapper();
+
 /*
 
     WIP:
@@ -68,10 +73,14 @@ const imageQueues = new Queues.QManager(ImageQNames);
 // todo: given a file with a list of page urls, process those
 // todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
 // todo build a queue of urls by scanning a site
+// todo: fix 'bug' where the root folder images are in the folder instead add them to a "_" folder
+// todo: fix bug where file paths are built with "//" when concatenating folder names
+// todo: investigate why we don't stop on Promise.allSettled
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
  .option("p", { alias: "pageurl", describe: "Url for a page to process", type: "string", demandOption: false })
+ .option("x", { alias: "xmlsitemap", describe: "XML Sitemap to scan for pages to process", type: "string", demandOption: false})
  .argv;
 
  if(options.inputname){
@@ -88,10 +97,13 @@ const options = yargs
 
 
 // if we are given a url then create a root folder using the domain name
-// todo: this should be in the page processing Q
 let rootFolder = "";
 if(options.pageurl){
-    const givenPageUrl = new Url(options.pageurl);
+    createDirForUrl(options.pageurl);
+}
+
+function createDirForUrl(aUrl){
+    const givenPageUrl = new Url(aUrl);
     rootFolder = givenPageUrl.hostname;
     Persist.createDir(rootFolder);
 }
@@ -110,11 +122,11 @@ const PageQNames = Object.getOwnPropertyNames(PageQueues.QueueNames);
 const pageQueues = new Queues.QManager(PageQNames);
 
 
-function createImageFromUrl(aUrl){
+function createImageFromUrl(anImageUrl, aPageUrl){
     return new Promise((resolve, reject) => {
-        ImageHTTP.getImageHeaders(aUrl)
+        ImageHTTP.getImageHeaders(anImageUrl)
             .then((img) => {
-                img.setFoundOnPageUrl(options.pageurl);
+                img.setFoundOnPageUrl(aPageUrl);
                 imageQueues.addToQueue(img, ImageQueues.QueueNames.IMAGES_TO_PROCESS);
                 resolve(img);
             }).catch((errorDetails) => {
@@ -129,12 +141,23 @@ if(options.pageurl){
     queueUpThePageURL(options.pageurl);
 }
 
+if(options.xmlsitemap){
+    sitemap.fetch(options.xmlsitemap).
+    then(function(sites) {
+        sites.sites.forEach((siteUrl)=>queueUpThePageURL(siteUrl));
+    }).catch((error)=> {
+        console.log("Error Reading Sitemap from " + options.xmlsitemap);
+    console.log(error);
+    });
+}
+
 function queueUpThePageURL(aUrl){
     const page = new Page.Page(aUrl);
     console.log(aUrl)
 
     page.getDom().
     then((page)=>{
+        createDirForUrl(aUrl);
         pageQueues.addToQueue(page, PageQueues.QueueNames.READY_TO_SCAN);
     }).catch((error)=>{
         pageQueues.addToQueue(page, PageQueues.QueueNames.ERROR_PROCESSING_PAGES);
@@ -165,14 +188,14 @@ const processPageQueueToScan = ()=>{
 
     const imageUrls = page.getAllImageUrlsFromDom();
     for(const imageUrl of imageUrls){
-        imageScanningPromises.push(createImageFromUrl(imageUrl));
+        imageScanningPromises.push(createImageFromUrl(imageUrl, page.getUrl()));
     }
 
     // wait for all createImageFromUrl promises to resolve before setting state for page and moving to scanned
-    Promise.allSettled(imageScanningPromises).then((values) => {
+    //Promise.allSettled(imageScanningPromises).then((values) => {
         page.setState(Page.States.SCANNED);
         pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
-    });
+    //});
 
 }
 
