@@ -22,7 +22,7 @@ function getImageHeaders(url) {
             // todo: consider if setState should also allow a 'message', then the error report could be associated with the state change
             img.setState(ImageDetails.States.ERROR_FETCHING_HEADERS);
             img.addErrorReport(error);
-            reject(error);
+            reject({image: img, error: error});
         });
     });
 }

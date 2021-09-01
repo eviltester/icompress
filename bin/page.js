@@ -25,6 +25,16 @@ class Page{
         this.#states = [States.INITIALISED];
         this.#errorReport = "";
         this.#imageUrls= [];
+
+        this.toJSON = function() {
+            return {
+                url : this.#url,
+                state : this.#state,
+                states : this.#states,
+                imageUrls : this.#imageUrls,
+                errorReport: this.#errorReport,
+            };
+        };
     }
 
     getUrl() {

@@ -111,12 +111,18 @@ const pageQueues = new Queues.QManager(PageQNames);
 
 
 function createImageFromUrl(aUrl){
+    return new Promise((resolve, reject) => {
         ImageHTTP.getImageHeaders(aUrl)
-            .then((img)=>{
+            .then((img) => {
                 img.setFoundOnPageUrl(options.pageurl);
                 imageQueues.addToQueue(img, ImageQueues.QueueNames.IMAGES_TO_PROCESS);
-
-            }).catch((error)=>{console.log("image error"); console.log(error)});
+                resolve(img);
+            }).catch((errorDetails) => {
+                console.log("image error");
+                console.log(errorDetails.error)
+                reject(errorDetails.image)
+        });
+    });
 }
 
 if(options.pageurl){
@@ -147,6 +153,7 @@ function findFirstPageWithState(state, qName){
 }
 
 const processPageQueueToScan = ()=>{
+
     const page = findFirstPageWithState(Page.States.FOUND, PageQueues.QueueNames.READY_TO_SCAN);
     if(page==null){ // nothing in the Queue waiting to be scanned
         return;
@@ -154,14 +161,19 @@ const processPageQueueToScan = ()=>{
     page.setState(Page.States.SCANNING);
     pageQueues.moveFromQToQ(page, PageQueues.QueueNames.READY_TO_SCAN, PageQueues.QueueNames.SCANNING);
 
+    const imageScanningPromises = [];
+
     const imageUrls = page.getAllImageUrlsFromDom();
     for(const imageUrl of imageUrls){
-        createImageFromUrl(imageUrl);
+        imageScanningPromises.push(createImageFromUrl(imageUrl));
     }
 
-    // todo: wait for all createImgeFromUrl promises to resolve before setting state for page and moving to scanned
-    page.setState(Page.States.SCANNED);
-    pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
+    // wait for all createImageFromUrl promises to resolve before setting state for page and moving to scanned
+    Promise.allSettled(imageScanningPromises).then((values) => {
+        page.setState(Page.States.SCANNED);
+        pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
+    });
+
 }
 
 
@@ -199,7 +211,12 @@ const quitIfQueuesAreEmpty = ()=>{
                             ImageQueues.QueueNames.IMAGES_TO_COMPRESS,
                             ImageQueues.QueueNames.DOWNLOADING_IMAGES,
                             ImageQueues.QueueNames.COMPRESSING_IMAGES
-    ])){
+    ]) &&
+        pageQueues.allGivenQueuesAreEmpty([
+                        PageQueues.QueueNames.READY_TO_SCAN,
+                        PageQueues.QueueNames.SCANNING
+        ])
+    ){
         shouldIQuit= true;
         nothingToDoCount++;
     }else{
@@ -211,11 +228,19 @@ const quitIfQueuesAreEmpty = ()=>{
     // add a delay before quiting
     // todo: add a config param for TimesToCheckQueueBeforeExiting
     if(nothingToDoCount<5){
+        console.log("Page Queues");
+        console.log("-----------");
+        console.log(pageQueues.reportOnQueueLengths());
+        console.log("Image Queues");
+        console.log("------------");
         console.log(imageQueues.reportOnQueueLengths());
         return;
     }
 
     if(shouldIQuit){
+        console.log(pageQueues.reportOnQueueLengths());
+        console.log(pageQueues.reportOnAllQueueContents())
+
         console.log(imageQueues.reportOnQueueLengths());
         console.log(imageQueues.reportOnAllQueueContents())
         Persist.outputImageJsonFiles(imageQueues.getItemsFromQueue(ImageQueues.QueueNames.COMPRESSED_IMAGES));
@@ -290,7 +315,8 @@ const processCompressImagesQ = ()=>{
 
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
 
-const pageProcessingQInterval = setInterval(()=>{processPageQueueToScan()},100)
+const pageProcessingQInterval = setInterval(()=>{processPageQueueToScan()},100);
+const reportOnPageQsInterval = setInterval(()=>{console.log(pageQueues.reportOnQueueLengths())},500);
 
 const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
 
