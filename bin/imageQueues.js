@@ -4,7 +4,8 @@
 // if it didn't then queues would be renamed to images
 
 function ImageQueueNamesEnum(){
-    this.IMAGES_TO_PROCESS = "IMAGES_TO_PROCESS";   // found images
+    this.IMAGES_TO_SCAN = "IMAGES_TO_SCAN"; // inmage to get header and see if we should scan
+    this.IMAGES_TO_PROCESS = "IMAGES_TO_PROCESS";   // found images, ready to evaluate if should download or not - possibly "DECIDE_DOWNLOAD_OR_NOT:
     this.IMAGES_TO_DOWNLOAD = "IMAGES_TO_DOWNLOAD"; // images which are big enough to process and download them
     this.DOWNLOADING_IMAGES = "DOWNLOADING_IMAGES"; // images we are currently downloading
     this.IMAGES_TO_COMPRESS = "IMAGES_TO_COMPRESS"; // images which we need to compress
@@ -15,6 +16,7 @@ function ImageQueueNamesEnum(){
 }
 
 const QueueNames = new ImageQueueNamesEnum();
+
 
 
 module.exports = {
