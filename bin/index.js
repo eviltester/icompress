@@ -67,6 +67,7 @@ const imageQueues = new Queues.QManager(ImageQNames);
 // todo: given a sitemap, scan all the pages listed in the sitemap - file or url
 // todo: given a file with a list of page urls, process those
 // todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
+// todo build a queue of urls by scanning a site
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
@@ -103,15 +104,13 @@ if(options.pageurl){
 // get the source and find all images
 // get all images and download those which are > 50K based on header to a folder
 
-// todo: create a page scanning queue and add the url there, then a queue processor, then we can easily add a set of urls, and fairly quickly build a set of urls to scan
-//todo: use QManager to create queues for pages FOUND_PAGES, SCANNING_PAGES, PAGES_IN_ERROR, SCANNED_PAGES also need a Page object ()
+
 
 const PageQNames = Object.getOwnPropertyNames(PageQueues.QueueNames);
 const pageQueues = new Queues.QManager(PageQNames);
 
 
 function createImageFromUrl(aUrl){
-
         ImageHTTP.getImageHeaders(aUrl)
             .then((img)=>{
                 img.setFoundOnPageUrl(options.pageurl);
@@ -127,7 +126,7 @@ if(options.pageurl){
 function queueUpThePageURL(aUrl){
     const page = new Page.Page(aUrl);
     console.log(aUrl)
-    // todo build a queue of urls by scanning a site
+
     page.getDom().
     then((page)=>{
         pageQueues.addToQueue(page, PageQueues.QueueNames.READY_TO_SCAN);
