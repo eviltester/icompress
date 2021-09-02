@@ -79,15 +79,8 @@ const sitemap = new Sitemapper();
 // todo: investigate why we don't stop on Promise.allSettled
 // todo: -f to force headers - this requires loading in the json file if it exists and clearing the commands if compressffmpeg and compressmagick are forced
 
-if(!Shell.commandExists("ffmpeg -version")){
-    console.log("Could not detect ffmpeg. Please see https://www.ffmpeg.org/ for install instructions.")
-    process.exit(-1);
-};
-if(!Shell.commandExists("magick -version")){
-    console.log("Could not detect imagemagick. Please see https://imagemagick.org/ for install instructions.")
-    process.exit(-1);
-
-}
+Shell.exitIfCliToolNotInstalled("ffmpeg", "ffmpeg -version", "https://www.ffmpeg.org");
+Shell.exitIfCliToolNotInstalled("imagemagick", "magick -version", "https://imagemagick.org");
 
 
 const options = yargs

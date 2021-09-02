@@ -1,6 +1,8 @@
 const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
 
+
+
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
         exec(command, (error, stdout, stderr) => {
@@ -14,12 +16,20 @@ function execPromise(command) {
 
 function commandExists(command){
     try{
+        console.log(command)
         execSync(command);
         return true;
     }catch(err){
         return false;
     }
 }
+
+function exitIfCliToolNotInstalled(toolName, detectionCommand, installLink){
+    if(!commandExists(detectionCommand)){
+        console.log(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`);
+        process.exit(-1);
+    }
+};
 
 function execParas(commandLineTemplate, params) {
 
@@ -49,5 +59,6 @@ function execParas(commandLineTemplate, params) {
 module.exports = {
     execPromise,
     execParas,
-    commandExists
+    commandExists,
+    exitIfCliToolNotInstalled
 }
