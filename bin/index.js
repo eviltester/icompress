@@ -47,7 +47,6 @@ const sitemap = new Sitemapper();
     TODOs:
     - NEXT
         - split code into modules and classes
-        - add output file paths and output file sizes to the img so that this is in the json output
     - typescript?
     - add tests for the modules and classes
     - configuration and defaults for hard coded values
@@ -57,6 +56,7 @@ const sitemap = new Sitemapper();
         - image processing should be a 'task' to apply on pages to support future expansion of spider
     - scan folder of images rather than urls and create a mirror folder with compressed images for local work
     - GUI/App to make it easier e.g. add url, scan, save progress, interrupt and restart, rescan etc.
+    - create a report as html to make it easy to view the output and the original and compressed files i.e open in new tab
  */
 
 
@@ -76,11 +76,13 @@ const sitemap = new Sitemapper();
 // todo: fix 'bug' where the root folder images are in the folder instead add them to a "_" folder
 // todo: fix bug where file paths are built with "//" when concatenating folder names
 // todo: investigate why we don't stop on Promise.allSettled
+// todo: -f to force download,compress
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
  .option("p", { alias: "pageurl", describe: "Url for a page to process", type: "string", demandOption: false })
  .option("x", { alias: "xmlsitemap", describe: "XML Sitemap to scan for pages to process", type: "string", demandOption: false})
+ .option("f", { alias: "forceactions", describe: "Force actions to be redone from a list i.e. headers,download,compress", type: "string", demandOption: false})
  .argv;
 
  if(options.inputname){
@@ -94,7 +96,14 @@ const options = yargs
     imagesToCompress.push(inputImage);
  }
 
+const forceactions = {download: false, compress: false};
 
+if(options.forceactions){
+    const actionsToForce = options.forceactions.split(",");
+    for(actionToForce of actionsToForce){
+        forceactions[actionToForce]=true;
+    }
+}
 
 // if we are given a url then create a root folder using the domain name
 let rootFolder = "";
@@ -124,12 +133,19 @@ const pageQueues = new Queues.QManager(PageQNames);
 
 function createImageFromUrl(anImageUrl, aPageUrl){
     return new Promise((resolve, reject) => {
-        ImageHTTP.getImageHeaders(anImageUrl)
+
+        const img = new ImageDetails.Image();
+        img.setSrc(anImageUrl);
+        img.setFoundOnPageUrl(aPageUrl);
+
+        // todo: check if json file has been downloaded if so we don't need to reprocess headers unless forced to
+
+        ImageHTTP.getImageHeaders(img)
             .then((img) => {
-                img.setFoundOnPageUrl(aPageUrl);
                 imageQueues.addToQueue(img, ImageQueues.QueueNames.IMAGES_TO_PROCESS);
                 resolve(img);
             }).catch((errorDetails) => {
+                imageQueues.addToQueue(img, ImageQueues.QueueNames.ERROR_PROCESSING_IMAGES);
                 console.log("image error");
                 console.log(errorDetails.error)
                 reject(errorDetails.image)
@@ -302,7 +318,7 @@ const processDownloadImagesQ = ()=>{
     imageQueues.moveFromQToQ(imageToDownload, ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD, ImageQueues.QueueNames.DOWNLOADING_IMAGES);
 
     console.log(imageQueues.reportOnQueueContents(ImageQueues.QueueNames.IMAGES_TO_DOWNLOAD));
-    ImageHTTP.downloadImageFile(imageToDownload).
+    ImageHTTP.downloadImageFile(imageToDownload, forceactions.download).
     then(()=>{
         imageToDownload.setState(ImageStates.READY_TO_COMPRESS);
         imageQueues.moveFromQToQ(imageToDownload, ImageQueues.QueueNames.DOWNLOADING_IMAGES, ImageQueues.QueueNames.IMAGES_TO_COMPRESS);

@@ -2,16 +2,15 @@ const HTTP = require("./httpWrapper.js");
 const ImageDetails = require("./imageDetails.js");
 const Path = require('path');
 
-function getImageHeaders(url) {
+function getImageHeaders(img) {
 
     //const img = {src:url};
-    const img = new ImageDetails.Image();
-    img.setSrc(url);
+
 
     return new Promise((resolve, reject) => {
         img.setState(ImageDetails.States.FETCHING_HEADERS);
 
-        HTTP.getHeaders(url).
+        HTTP.getHeaders(img.getSrc()).
         then(function(headers) {
             img.setState(ImageDetails.States.FETCHED_HEADERS);
             img.setContentLength(headers.get('content-length'));
@@ -27,14 +26,14 @@ function getImageHeaders(url) {
     });
 }
 
-function downloadImageFile(img) {
+function downloadImageFile(img, forceDownload) {
 
     img.setState(ImageDetails.States.DOWNLOADING);
 
     return new Promise((resolve, reject) => {
         const downloadTo = img.getFileDirPath() + Path.sep + img.getOriginalFileName();
         img.setFullFilePath(downloadTo);
-        HTTP.downloadFile(img.getSrc(), downloadTo).
+        HTTP.downloadFile(img.getSrc(), downloadTo, forceDownload).
         then((response)=>{
             img.setState(ImageDetails.States.DOWNLOADED);
             resolve(img)

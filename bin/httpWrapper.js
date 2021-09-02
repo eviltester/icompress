@@ -11,7 +11,15 @@ const FS = require('fs');
 // https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
 
 // a downloadFile method which... given a url and an output path downloads the file and writes it to disk
-function downloadFile(fromUrl, toFilePath) {
+function downloadFile(fromUrl, toFilePath, forceDownload) {
+
+    if (typeof forceDownload === 'undefined') { forceDownload = false; }
+
+    // do not download again if already exists
+    // if(!forceDownload && FS.existsSync(toFilePath)){
+    //     return new Promise().resolve({});
+    // }
+
     return new Promise((resolve, reject) => {
         const fileStream = FS.createWriteStream(toFilePath);
         fetch(fromUrl).

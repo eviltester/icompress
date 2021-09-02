@@ -1,4 +1,5 @@
 const Shell = require("./commandLineExec.js");
+const FS = require('fs');
 
 // This just wraps imageMagick
 
@@ -16,6 +17,9 @@ function imageMagickCompress(inputFileName, outputFileName){
     return new Promise((resolve, reject)=>{
         Shell.execParas(imagemagick, commandDetails)
             .then((result)=>{
+                const stats = FS.statSync(outputFileName);
+                const fileSizeInBytes = stats.size;
+                commandDetails.outputFileSize = fileSizeInBytes;
                 resolve({imagemagick: imagemagick, commandDetails: commandDetails, execResult: result})
             }).catch((error)=> {
             reject(error);

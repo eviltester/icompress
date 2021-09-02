@@ -1,4 +1,5 @@
 const Shell = require("./commandLineExec.js");
+const FS = require('fs');
 
 // This just wraps ffmpeg
 
@@ -14,6 +15,9 @@ function ffmpegCompress(inputFileName, outputFileName){
     return new Promise((resolve, reject)=>{
         Shell.execParas(ffmpeg, commandDetails)
             .then((result)=>{
+                const stats = FS.statSync(outputFileName);
+                const fileSizeInBytes = stats.size;
+                commandDetails.outputFileSize = fileSizeInBytes;
                 resolve({ffmpeg: ffmpeg, commandDetails: commandDetails, execResult: result})
             }).catch((error)=> {
             reject(error);
