@@ -76,13 +76,13 @@ const sitemap = new Sitemapper();
 // todo: fix 'bug' where the root folder images are in the folder instead add them to a "_" folder
 // todo: fix bug where file paths are built with "//" when concatenating folder names
 // todo: investigate why we don't stop on Promise.allSettled
-// todo: -f to force download,compress
+// todo: -f to force headers - this requires loading in the json file if it exists and clearing the commands if compressffmpeg and compressmagick are forced
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
  .option("p", { alias: "pageurl", describe: "Url for a page to process", type: "string", demandOption: false })
  .option("x", { alias: "xmlsitemap", describe: "XML Sitemap to scan for pages to process", type: "string", demandOption: false})
- .option("f", { alias: "forceactions", describe: "Force actions to be redone from a list i.e. headers,download,compress", type: "string", demandOption: false})
+ .option("f", { alias: "forceactions", describe: "Force actions to be redone from a list i.e. headers,download,compressffmpeg,compressmagick", type: "string", demandOption: false})
  .argv;
 
  if(options.inputname){
@@ -96,7 +96,7 @@ const options = yargs
     imagesToCompress.push(inputImage);
  }
 
-const forceactions = {download: false, compress: false};
+const forceactions = {download: false, compressffmpeg: false, compressmagick:false};
 
 if(options.forceactions){
     const actionsToForce = options.forceactions.split(",");
@@ -341,7 +341,7 @@ const processCompressImagesQ = ()=>{
     imageToCompress.setState(ImageStates.ABOUT_TO_COMPRESS);
     imageQueues.moveFromQToQ(imageToCompress, ImageQueues.QueueNames.IMAGES_TO_COMPRESS, ImageQueues.QueueNames.COMPRESSING_IMAGES);
 
-    CompressImage.compress(imageToCompress).
+    CompressImage.compress(imageToCompress, forceactions.compressffmpeg, forceactions.compressmagick).
     then((image)=>{
         imageQueues.moveFromQToQ(image, ImageQueues.QueueNames.COMPRESSING_IMAGES, ImageQueues.QueueNames.COMPRESSED_IMAGES);
         Persist.outputImageJsonFile(image);

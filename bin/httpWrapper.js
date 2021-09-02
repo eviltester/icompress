@@ -16,9 +16,10 @@ function downloadFile(fromUrl, toFilePath, forceDownload) {
     if (typeof forceDownload === 'undefined') { forceDownload = false; }
 
     // do not download again if already exists
-    // if(!forceDownload && FS.existsSync(toFilePath)){
-    //     return new Promise().resolve({});
-    // }
+    if(!forceDownload && FS.existsSync(toFilePath)){
+        console.log("FILE EXISTS: skipping download for " + toFilePath);
+        return new Promise(resolve => resolve({}));
+    }
 
     return new Promise((resolve, reject) => {
         const fileStream = FS.createWriteStream(toFilePath);
