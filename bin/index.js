@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+const Shell = require("./commandLineExec.js");
+
 // http://yargs.js.org/
 const yargs = require("yargs");
 
@@ -66,10 +68,9 @@ const sitemap = new Sitemapper();
     Startup
  */
 
-// todo: check if ffmpeg and imagemagick are installed, if not then exit with error messages
+
 // todo: have a 'retry' for any of the images in an output state file which were in an 'error' state and pick up from the last valid state
 // todo: add an output folder option rather than always using the current folder
-// todo: given a sitemap, scan all the pages listed in the sitemap - file or url
 // todo: given a file with a list of page urls, process those
 // todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
 // todo build a queue of urls by scanning a site
@@ -77,6 +78,18 @@ const sitemap = new Sitemapper();
 // todo: fix bug where file paths are built with "//" when concatenating folder names
 // todo: investigate why we don't stop on Promise.allSettled
 // todo: -f to force headers - this requires loading in the json file if it exists and clearing the commands if compressffmpeg and compressmagick are forced
+
+if(!Shell.commandExists("ffmpeg -version")){
+    console.log("Could not detect ffmpeg. Please see https://www.ffmpeg.org/ for install instructions.")
+    process.exit(-1);
+};
+if(!Shell.commandExists("magick -version")){
+    console.log("Could not detect imagemagick. Please see https://imagemagick.org/ for install instructions.")
+    process.exit(-1);
+
+}
+
+
 const options = yargs
  .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
