@@ -74,10 +74,11 @@ const sitemap = new Sitemapper();
 // todo: given a file with a list of page urls, process those
 // todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
 // todo build a queue of urls by scanning a site
-// todo: fix 'bug' where the root folder images are in the folder instead add them to a "_" folder
 // todo: fix bug where file paths are built with "//" when concatenating folder names
 // todo: investigate why we don't stop on Promise.allSettled
 // todo: -f to force headers - this requires loading in the json file if it exists and clearing the commands if compressffmpeg and compressmagick are forced
+// todo: add more default compression commands
+// todo: allow user configure the compression commands
 
 Shell.exitIfCliToolNotInstalled("ffmpeg", "ffmpeg -version", "https://www.ffmpeg.org");
 Shell.exitIfCliToolNotInstalled("imagemagick", "magick -version", "https://imagemagick.org");

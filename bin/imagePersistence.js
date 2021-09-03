@@ -34,7 +34,11 @@ function createFolderStructureForImage(image, root) {
 
             // create a page folder
             const pathParts = new Url(urlToParse).pathname.split('/').filter(item => item !="");
-            const dir = pathParts.join('_');
+            let dir = pathParts.join('_');
+            // if it is root then make the path _root
+            if(dir.length==0){
+                dir="_root"
+            }
             image.setUrlPath(dir);
 
             // create an image name folder

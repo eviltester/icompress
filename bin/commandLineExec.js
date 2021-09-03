@@ -1,8 +1,6 @@
 const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
 
-
-
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
         exec(command, (error, stdout, stderr) => {
