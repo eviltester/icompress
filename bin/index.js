@@ -74,7 +74,6 @@ const sitemap = new Sitemapper();
 // todo: given a file with a list of page urls, process those
 // todo: have a -scan method which only does the 'head' and reports on what should be downloaded and what should be ignored but does not actually download or compress
 // todo build a queue of urls by scanning a site
-// todo: fix bug where file paths are built with "//" when concatenating folder names
 // todo: investigate why we don't stop on Promise.allSettled
 // todo: -f to force headers - this requires loading in the json file if it exists and clearing the commands if compressffmpeg and compressmagick are forced
 // todo: add more default compression commands
@@ -97,7 +96,7 @@ const options = yargs
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;
     const inputImage = new ImageDetails.Image();
-    inputImage.setSrc("local/"+options.inputname);
+    inputImage.setSrc(Persist.combineIntoPath("local"+options.inputname));
     inputImage.setFullFilePath(options.inputname);
     inputImage.setState(ImageStates.READY_TO_COMPRESS);
     imagesToCompress.push(inputImage);

@@ -1,4 +1,5 @@
 const HTTP = require("./httpWrapper");
+const Persist = require("./imagePersistence");
 
 function PageStatesEnum(){
     this.INITIALISED = "INITIALISED";
@@ -79,7 +80,8 @@ class Page{
             }
             if (!imageUrl.includes(":/")) {
                 // image is relative
-                imageUrl = this.#url + divider + imageUrl;
+                imageUrl = Persist.combineIntoPath(this.#url, divider, imageUrl);
+                //imageUrl = this.#url + divider + imageUrl;
             }
             imageUrls.push(imageUrl);
         }

@@ -23,6 +23,28 @@ function createDir(dir){
     }
 }
 
+function combineIntoPath(...pathParts) {
+    let combinedPath ="";
+    let sep = "";
+    for (let i=0; i<pathParts.length; i++) {
+        var partToAdd = pathParts[i];
+        if (partToAdd.trim().length > 0) {
+            // remove any trailing slash
+            if (partToAdd.endsWith("/") || partToAdd.endsWith("\\")) {
+                partToAdd = partToAdd.substring(0, partToAdd.length - 1);
+            }
+            // remove any starting slash
+            if (partToAdd.startsWith("/") || partToAdd.startsWith("\\")) {
+                partToAdd = partToAdd.substring(1);
+            }
+            combinedPath = combinedPath + sep + partToAdd;
+            sep = Path.sep;
+
+        }
+    }
+    return combinedPath;
+}
+
 function createFolderStructureForImage(image, root) {
     return new Promise((resolve, reject) => {
         try {
@@ -48,7 +70,11 @@ function createFolderStructureForImage(image, root) {
 
             console.log("creating dir " + dir);
             // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
-            const fileDirPath = image.getRootFolder() + Path.sep + image.getUrlPath() + Path.sep + image.getOriginalFileName();
+            const fileDirPath = combineIntoPath(
+                                    image.getRootFolder(),
+                                    image.getUrlPath(),
+                                    image.getOriginalFileName());
+            //const fileDirPath = image.getRootFolder() + Path.sep + image.getUrlPath() + Path.sep + image.getOriginalFileName();
             image.setFileDirPath(fileDirPath);
             createDir(fileDirPath);
 
@@ -83,5 +109,6 @@ module.exports ={
     createDir,
     createFolderStructureForImage,
     outputImageJsonFile,
-    outputImageJsonFiles
+    outputImageJsonFiles,
+    combineIntoPath
 }
