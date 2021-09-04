@@ -21,10 +21,20 @@ const Path = require('path');
 // convert INPUT.gif_or_png -strip [-resize WxH] [-alpha Remove] OUTPUT.png
 // convert INPUT.jpg -sampling-factor 4:2:0 -strip [-resize WxH] [-quality N] [-interlace JPEG] [-colorspace Gray/sRGB] OUTPUT.jpg
 
+// todo: we could generate different combinations
 const commands = [
-    {name: "colourDepth", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : ""},
     {name: "quality", template: 'magick convert ${inputFileName} -strip -quality 85% ${outputFileName}', outputAppend : ""},
-    {name: "colourDepthQuality", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality32x08", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality64x08", template: 'magick convert ${inputFileName} -strip +dither -colors 64 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality128x08", template: 'magick convert ${inputFileName} -strip +dither -colors 128 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality256x08", template: 'magick convert ${inputFileName} -strip +dither -colors 256 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality256x08na", template: 'magick convert ${inputFileName} -strip +dither -colors 256 -depth 8 -alpha Remove -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality1024x12", template: 'magick convert ${inputFileName} -strip +dither -colors 1024 -depth 12 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality2048x12", template: 'magick convert ${inputFileName} -strip +dither -colors 2048 -depth 12 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality2048x12na", template: 'magick convert ${inputFileName} -strip +dither -colors 2048 -depth 12 -quality 85% -alpha Remove ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality4096x12", template: 'magick convert ${inputFileName} -strip +dither -colors 4096 -depth 12 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality32768x16", template: 'magick convert ${inputFileName} -strip +dither -colors 32768 -depth 16 -quality 85% ${outputFileName}', outputAppend : ""},
+    {name: "colourDepthQuality256x16", template: 'magick convert ${inputFileName} -strip +dither -colors 256 -depth 16 -quality 85% ${outputFileName}', outputAppend : ""},
     {name: "jpgSampler", template: 'magick convert ${inputFileName} -sampling-factor 4:2:0 -strip -quality 85% -interlace JPEG ${outputFileName}', outputAppend : "jpg"},
     {name: "jpgProgressive", template: 'magick convert ${inputFileName} -strip -quality 85% -interlace Plane ${outputFileName}', outputAppend : "jpg"},
     {name: "colourDepthPNG", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : ""},
@@ -32,14 +42,15 @@ const commands = [
 
 ];
 
+// todo: allow configuration and profiles for image magick
+
 function imageMagickCompress(inputFileName, outputFileName, forceCompress){
 
-    // todo: allow configuration and profiles for image magick
     const imagemagick = 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}';
 
     const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
-
-    return Shell.execIfForceOrNew(forceCompress, outputFileName, "imageMagick", imagemagick, commandDetails);
+    
+    return imageMagickCompressCommand(commands[0], inputFileName, outputFileName, forceCompress);
 }
 
 function applicableCommands(forFileName){
@@ -74,7 +85,29 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
 
     const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
 
-    return Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails);
+    const stats = FS.statSync(inputFileName);
+    const originalFileSizeInBytes = stats.size;
+    
+    return new Promise((resolve, reject)=> {
+        // wrap in a promise and delete if output length is greater than input
+        // this is particularly important when we generate combinations of commands
+        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
+        then((details)=>{
+                console.log("file size test");
+                //delete if output length is greater than input
+                details.commandDetails.status="COMPRESSED";
+                // todo: add a compression amount and %age
+                if(details.commandDetails.outputFileSize >= originalFileSizeInBytes){
+                    details.commandDetails.status="DELETED";
+                    FS.unlink(outputFileName,
+                        ()=>{console.log("Error deleting " + outputFileName)});
+                }
+                resolve(details);
+            }
+        ).catch((error)=>{
+            reject(error);
+        })
+    });
 }
 
 module.exports={

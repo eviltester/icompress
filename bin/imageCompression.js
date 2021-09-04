@@ -39,22 +39,6 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
-    // todo apply all standard image magick compression algorithms
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled
-    // Promise.allSettled
-    // return new Promise((resolve, reject)=>{
-    //     ImageMagick.compress(inputFileName, outputFileName, forceCompress)
-    //         .then((result)=>{
-    //             imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
-    //             imageToCompress.addCommand(result.command, result.commandDetails);
-    //             resolve(imageToCompress);
-    //         }).catch((error)=> {
-    //             imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
-    //             imageToCompress.addErrorReport(error);
-    //             reject(imageToCompress);
-    //     })
-    // });
-
     // todo: consider deleting output files that are larger than the one we just compressed
     promises = [];
     for(command of ImageMagick.applicableCommands(inputFileName)){
@@ -66,9 +50,9 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
                         imageToCompress.addCommand(result.command, result.commandDetails);
                         resolve(imageToCompress);
                     }).catch((error)=> {
-                    imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
-                    imageToCompress.addErrorReport(error);
-                    reject(imageToCompress);
+                        imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
+                        imageToCompress.addErrorReport(error);
+                        reject(imageToCompress);
                 })
             })
         )
