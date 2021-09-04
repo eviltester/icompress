@@ -361,7 +361,8 @@ const processCompressImagesQ = ()=>{
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
 
 const pageProcessingQInterval = setInterval(()=>{processPageQueueToScan()},100);
-const reportOnPageQsInterval = setInterval(()=>{console.log(pageQueues.reportOnQueueLengths())},500);
+
+//const reportOnPageQsInterval = setInterval(()=>{console.log(pageQueues.reportOnQueueLengths())},500);
 
 const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
 
@@ -373,7 +374,7 @@ const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFold
 // todo: add to an ImageQueuesProcessing module
 const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
-const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);
+//const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);
 const addImagesToDownloadQInterval = setInterval(()=>{filterImagesAndAddToDownloadQueue(50)},500);
 
 

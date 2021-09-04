@@ -1,5 +1,6 @@
 const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
+const FS = require('fs');
 
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
@@ -54,9 +55,39 @@ function execParas(commandLineTemplate, params) {
     );
 }
 
+function execIfForceOrNew(force, outputFileName,
+                          commandName, commandLineTemplate, params){
+
+    if (typeof force === 'undefined') { force = false; }
+
+    // do not run again if output already exists unless forced to run command
+    if(!force && FS.existsSync(outputFileName)){
+        const stats = FS.statSync(outputFileName);
+        const fileSizeInBytes = stats.size;
+        params.outputFileSize = fileSizeInBytes;
+        console.log("FILE EXISTS: skipping " + commandName + " compress for " + outputFileName);
+        return new Promise(resolve => resolve(
+            {command: commandLineTemplate, commandDetails: params, execResult: ""}));
+    }
+
+    return new Promise((resolve, reject)=>{
+        execParas(commandLineTemplate, params)
+            .then((result)=>{
+                const stats = FS.statSync(outputFileName);
+                const fileSizeInBytes = stats.size;
+                params.outputFileSize = fileSizeInBytes;
+                resolve({command: commandLineTemplate, commandDetails: params, execResult: result})
+            }).catch((error)=> {
+                reject(error);
+            })
+    });
+}
+
+
 module.exports = {
     execPromise,
     execParas,
     commandExists,
-    exitIfCliToolNotInstalled
+    exitIfCliToolNotInstalled,
+    execIfForceOrNew
 }

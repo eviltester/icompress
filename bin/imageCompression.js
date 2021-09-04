@@ -22,11 +22,10 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompr
     imageToFFmpeg.setState(ImageStates.COMPRESSING_VIA_FFMPEG);
 
     return new Promise((resolve, reject)=>{
-        const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
         FFMPEG.compress(inputFileName, outputFileName, forceCompress)
             .then((result)=>{
                 imageToFFmpeg.setState(ImageStates.COMPRESSED_VIA_FFMPEG);
-                imageToFFmpeg.addCommand(result.ffmpeg, result.commandDetails);
+                imageToFFmpeg.addCommand(result.command, result.commandDetails);
                 resolve(imageToFFmpeg)
             }).catch((error)=> {
             imageToFFmpeg.setState(ImageStates.ERROR_FFMPEG_COMPRESS);
@@ -40,18 +39,53 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
-    return new Promise((resolve, reject)=>{
-        ImageMagick.compress(inputFileName, outputFileName, forceCompress)
-            .then((result)=>{
-                imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
-                imageToCompress.addCommand(result.imagemagick, result.commandDetails);
-                resolve(imageToCompress);
-            }).catch((error)=> {
-            imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
-            imageToCompress.addErrorReport(error);
-            reject(imageToCompress);
-        })
+    // todo apply all standard image magick compression algorithms
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled
+    // Promise.allSettled
+    // return new Promise((resolve, reject)=>{
+    //     ImageMagick.compress(inputFileName, outputFileName, forceCompress)
+    //         .then((result)=>{
+    //             imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
+    //             imageToCompress.addCommand(result.command, result.commandDetails);
+    //             resolve(imageToCompress);
+    //         }).catch((error)=> {
+    //             imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
+    //             imageToCompress.addErrorReport(error);
+    //             reject(imageToCompress);
+    //     })
+    // });
+
+    // todo: consider deleting output files that are larger than the one we just compressed
+    promises = [];
+    for(command of ImageMagick.applicableCommands(inputFileName)){
+        promises.push(
+            new Promise((resolve, reject)=>{
+                ImageMagick.compressUsingCommand(command, inputFileName, outputFileName, forceCompress)
+                    .then((result)=>{
+                        imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
+                        imageToCompress.addCommand(result.command, result.commandDetails);
+                        resolve(imageToCompress);
+                    }).catch((error)=> {
+                    imageToCompress.setState(ImageStates.ERROR_IMAGEMAGICK_COMPRESS);
+                    imageToCompress.addErrorReport(error);
+                    reject(imageToCompress);
+                })
+            })
+        )
+    }
+    return new Promise((resolve, reject)=> {
+        return Promise.allSettled(promises).then(
+            (fulfilled_rejected) => {
+                for (statusEntry of fulfilled_rejected) {
+                    if (statusEntry.status == "rejected") {
+                        reject(statusEntry.value);
+                    }
+                }
+                resolve(fulfilled_rejected[0].value)
+            }
+        )
     });
+
 }
 
 function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick){
