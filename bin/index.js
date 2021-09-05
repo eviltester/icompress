@@ -193,13 +193,11 @@ imageQueues.findFirstImageWithState = (state, qName) => {
     return imageQueues.findFirstInQWhere(qName, (image) => {return image.getState()==state})
 }
 
-function findFirstPageWithState(state, qName){
-    return pageQueues.findFirstInQWhere(qName, (page) => {return page.getState()==state})
-}
-
 const processPageQueueToScan = ()=>{
 
-    const page = findFirstPageWithState(Page.States.FOUND, PageQueues.QueueNames.READY_TO_SCAN);
+    const page = pageQueues.findFirstInQWhere(PageQueues.QueueNames.READY_TO_SCAN, (page) => {
+        return page.getState() == Page.States.FOUND
+    });
     if(page==null){ // nothing in the Queue waiting to be scanned
         return;
     }
@@ -223,7 +221,6 @@ const processPageQueueToScan = ()=>{
         page.setState(Page.States.SCANNED);
         pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
     });
-
 }
 
 
@@ -363,20 +360,15 @@ const processCompressImagesQ = ()=>{
 };
 
 
+
+// Page Queue Intervals
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
-
 const pageProcessingQInterval = setInterval(()=>{processPageQueueToScan()},100);
-
 //const reportOnPageQsInterval = setInterval(()=>{console.log(pageQueues.reportOnQueueLengths())},500);
 
+
+// Image Queue Intervals
 const createFolderStructureQInterval = setInterval(()=>{processQueueToCreateFolderStructure()},100)
-
-
-
-
-
-
-// todo: add to an ImageQueuesProcessing module
 const downloadImagesQInterval = setInterval(()=>{processDownloadImagesQ()},500)
 const compressImagesQInterval = setInterval(()=>{processCompressImagesQ()},1000);
 //const reportOnImageQsInterval = setInterval(()=>{console.log(imageQueues.reportOnQueueLengths())},500);

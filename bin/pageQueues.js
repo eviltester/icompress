@@ -10,6 +10,15 @@ function PageQueueNamesEnum(){
 const QueueNames = new PageQueueNamesEnum();
 
 
+class PageQueueManager{
+
+    constructor(){
+
+    }
+
+
+}
+
 
 module.exports = {
     QueueNames
