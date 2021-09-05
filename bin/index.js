@@ -118,9 +118,7 @@ if(options.pageurl){
 }
 
 function createDirForUrl(aUrl){
-    const givenPageUrl = new Url(aUrl);
-    rootFolder = givenPageUrl.hostname;
-    Persist.createDir(rootFolder);
+    rootFolder = Persist.createDirForUrlHostname(aUrl);
 }
 
 /*
@@ -132,12 +130,10 @@ function createDirForUrl(aUrl){
 // get all images and download those which are > 50K based on header to a folder
 
 
+const pageQManager = new PageQueues.PageQueueManager();
 
-const PageQNames = Object.getOwnPropertyNames(PageQueues.QueueNames);
-const pageQueues = new Queues.QManager(PageQNames);
-
-
-function createImageFromUrl(anImageUrl, aPageUrl){
+// decided not to add this into the PageQueueManager because it is an Image Processing function, so passed it in as a callback
+createImageFromUrl = (anImageUrl, aPageUrl)=>{
     return new Promise((resolve, reject) => {
 
         const img = new ImageDetails.Image();
@@ -160,31 +156,16 @@ function createImageFromUrl(anImageUrl, aPageUrl){
 }
 
 if(options.pageurl){
-    queueUpThePageURL(options.pageurl);
+    pageQManager.queueUpThePageURL(options.pageurl);
 }
 
 if(options.xmlsitemap){
     sitemap.fetch(options.xmlsitemap).
     then(function(sites) {
-        sites.sites.forEach((siteUrl)=>queueUpThePageURL(siteUrl));
+        sites.sites.forEach((siteUrl)=>pageQManager.queueUpThePageURL(siteUrl));
     }).catch((error)=> {
         console.log("Error Reading Sitemap from " + options.xmlsitemap);
     console.log(error);
-    });
-}
-
-function queueUpThePageURL(aUrl){
-    const page = new Page.Page(aUrl);
-    console.log(aUrl)
-
-    page.getDom().
-    then((page)=>{
-        createDirForUrl(aUrl);
-        pageQueues.addToQueue(page, PageQueues.QueueNames.READY_TO_SCAN);
-    }).catch((error)=>{
-        pageQueues.addToQueue(page, PageQueues.QueueNames.ERROR_PROCESSING_PAGES);
-        console.log("processing error");
-        console.log(error);
     });
 }
 
@@ -192,37 +173,6 @@ function queueUpThePageURL(aUrl){
 imageQueues.findFirstImageWithState = (state, qName) => {
     return imageQueues.findFirstInQWhere(qName, (image) => {return image.getState()==state})
 }
-
-const processPageQueueToScan = ()=>{
-
-    const page = pageQueues.findFirstInQWhere(PageQueues.QueueNames.READY_TO_SCAN, (page) => {
-        return page.getState() == Page.States.FOUND
-    });
-    if(page==null){ // nothing in the Queue waiting to be scanned
-        return;
-    }
-    page.setState(Page.States.SCANNING);
-    pageQueues.moveFromQToQ(page, PageQueues.QueueNames.READY_TO_SCAN, PageQueues.QueueNames.SCANNING);
-
-    const imageScanningPromises = [];
-
-    const imageUrls = page.getAllImageUrlsFromDom();
-    for(const imageUrl of imageUrls){
-        imageScanningPromises.push(createImageFromUrl(imageUrl, page.getUrl()));
-    }
-
-    /*
-        wait for all createImageFromUrl promises to resolve
-        before setting state for page and moving to scanned
-        this will allow recovery in the future if we
-        save out queue states and details to allow stopping the script
-     */
-    Promise.allSettled(imageScanningPromises).then((values) => {
-        page.setState(Page.States.SCANNED);
-        pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
-    });
-}
-
 
 function filterImagesAndAddToDownloadQueue(maxK){
 
@@ -245,7 +195,7 @@ function filterImagesAndAddToDownloadQueue(maxK){
 
 
 
-// todo: add to ExitBasedOnQueues module
+// todo: add to ExitBasedOnQueues class
 let nothingToDoCount=0;
 
 // todo: include page processing queues here too
@@ -259,10 +209,7 @@ const quitIfQueuesAreEmpty = ()=>{
                             ImageQueues.QueueNames.DOWNLOADING_IMAGES,
                             ImageQueues.QueueNames.COMPRESSING_IMAGES
     ]) &&
-        pageQueues.allGivenQueuesAreEmpty([
-                        PageQueues.QueueNames.READY_TO_SCAN,
-                        PageQueues.QueueNames.SCANNING
-        ])
+        pageQManager.allProcessingQueuesAreEmpty()
     ){
         shouldIQuit= true;
         nothingToDoCount++;
@@ -277,7 +224,7 @@ const quitIfQueuesAreEmpty = ()=>{
     if(nothingToDoCount<5){
         console.log("Page Queues");
         console.log("-----------");
-        console.log(pageQueues.reportOnQueueLengths());
+        console.log(pageQManager.queues().reportOnQueueLengths());
         console.log("Image Queues");
         console.log("------------");
         console.log(imageQueues.reportOnQueueLengths());
@@ -285,8 +232,8 @@ const quitIfQueuesAreEmpty = ()=>{
     }
 
     if(shouldIQuit){
-        console.log(pageQueues.reportOnQueueLengths());
-        console.log(pageQueues.reportOnAllQueueContents())
+        console.log(pageQManager.queues().reportOnQueueLengths());
+        console.log(pageQManager.queues().reportOnAllQueueContents())
 
         console.log(imageQueues.reportOnQueueLengths());
         console.log(imageQueues.reportOnAllQueueContents())
@@ -361,10 +308,13 @@ const processCompressImagesQ = ()=>{
 
 
 
-// Page Queue Intervals
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
-const pageProcessingQInterval = setInterval(()=>{processPageQueueToScan()},100);
-//const reportOnPageQsInterval = setInterval(()=>{console.log(pageQueues.reportOnQueueLengths())},500);
+
+
+
+// Page Queue Intervals
+pageQManager.startPageProcessingQueue(createImageFromUrl, 100);
+//const reportOnPageQsInterval = setInterval(()=>{console.log(pageQManager.queues().reportOnQueueLengths())},500);
 
 
 // Image Queue Intervals

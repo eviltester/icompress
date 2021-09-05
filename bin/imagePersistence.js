@@ -12,6 +12,13 @@ const ImageDetails = require("./imageDetails.js");
 
  */
 
+
+function createDirForUrlHostname(aUrl){
+    const givenUrl = new Url(aUrl);
+    createDir(givenUrl.hostname);
+    return givenUrl.hostname;
+}
+
 function createDir(dir){
     console.log("creating: "  + dir);
     try {
@@ -109,5 +116,6 @@ module.exports ={
     createFolderStructureForImage,
     outputImageJsonFile,
     outputImageJsonFiles,
-    combineIntoPath
+    combineIntoPath,
+    createDirForUrlHostname
 }
