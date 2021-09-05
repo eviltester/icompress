@@ -30,6 +30,7 @@ const Persist = require("./imagePersistence");
 
 
 // https://www.npmjs.com/package/sitemapper
+// for reading sitemaps
 const Sitemapper = require('sitemapper');
 const sitemap = new Sitemapper();
 
@@ -107,6 +108,7 @@ if(options.inputname){
     inputImage.setFullFilePath(options.inputname);
     inputImage.setState(ImageStates.READY_TO_COMPRESS);
     ImageQManager.addImageToCompressQueue(inputImage);
+    // todo: since this is a single file, we could just await the compression code
 }
 
 
