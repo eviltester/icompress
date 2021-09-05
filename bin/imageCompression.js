@@ -39,7 +39,6 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
-    // todo: consider deleting output files that are larger than the one we just compressed
     promises = [];
     for(command of ImageMagick.applicableCommands(inputFileName)){
         promises.push(

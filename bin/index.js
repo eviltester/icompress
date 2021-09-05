@@ -213,11 +213,16 @@ const processPageQueueToScan = ()=>{
         imageScanningPromises.push(createImageFromUrl(imageUrl, page.getUrl()));
     }
 
-    // wait for all createImageFromUrl promises to resolve before setting state for page and moving to scanned
-    //Promise.allSettled(imageScanningPromises).then((values) => {
+    /*
+        wait for all createImageFromUrl promises to resolve
+        before setting state for page and moving to scanned
+        this will allow recovery in the future if we
+        save out queue states and details to allow stopping the script
+     */
+    Promise.allSettled(imageScanningPromises).then((values) => {
         page.setState(Page.States.SCANNED);
         pageQueues.moveFromQToQ(page, PageQueues.QueueNames.SCANNING, PageQueues.QueueNames.SCANNED);
-    //});
+    });
 
 }
 

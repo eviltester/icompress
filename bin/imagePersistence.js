@@ -61,7 +61,6 @@ function createFolderStructureForImage(image, root) {
             if(dir.length==0){
                 dir="_root"
             }
-            image.setUrlPath(dir);
 
             // create an image name folder
             const fileNamePathParts = new Url(image.getSrc()).pathname.split('/');
@@ -72,9 +71,9 @@ function createFolderStructureForImage(image, root) {
             // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
             const fileDirPath = combineIntoPath(
                                     image.getRootFolder(),
-                                    image.getUrlPath(),
+                                    dir,
                                     image.getOriginalFileName());
-            //const fileDirPath = image.getRootFolder() + Path.sep + image.getUrlPath() + Path.sep + image.getOriginalFileName();
+
             image.setFileDirPath(fileDirPath);
             createDir(fileDirPath);
 

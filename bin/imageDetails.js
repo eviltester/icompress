@@ -32,32 +32,18 @@ class ImageDetails{
 
     // TODO: investigate the getter/setter shortcut code for JavaScript
 
-    // TODO: add comments to describe each field
-    // TODO: should be able to rename these as necessary because they are supposed to be encapsulated here
-    #state;
-    #states;
-    #src;
-    #errorReport;
-    #commands;
-    #fullFilePath;
-    #fileDirPath;
-    #contentLength;
-    #contentType;
-    #foundOnPage;
-    #rootFolder;
-    #fileName;
-    #dir;
-
-    /*
-    image:
-       src // download url from src attribute
-       contentLength // header reported by server
-       type // type reported by server
-       dir  // directory plan to write to
-       fileName // planned filename to use
-       fullFilePath // actual file path for the file
-       foundOnPage  // url of parent page
-    */
+    #state;  // current state of the image processing
+    #states;  // states image has passed through
+    #src;   // where was this image found url or file path
+    #errorReport;   // a list of error reports for the error over time
+    #commands;    // the commands and results that have been run on the image
+    #fullFilePath;   // the downloaded file for the original image
+    #fileDirPath;    // where any output for the file will be stored
+    #contentLength; // the length reported by headers ... todo: replaced by actual file length once downloaded
+    #contentType; // the type of image
+    #foundOnPage; // the url for the page the image was found on (todo: this might need to be an array to avoid duplication)
+    #rootFolder; // the main parent output folder
+    #fileName;   // the filename without any paths for the original image (todo: could be derived from src)
 
 
     constructor(){
@@ -82,7 +68,6 @@ class ImageDetails{
                 fileDirPath : this.#fileDirPath,
                 rootFolder : this.#rootFolder,
                 fileName : this.#fileName,
-                dir : this.#dir,
                 commands: this.#commands,
                 errorReport: this.#errorReport,
             };
@@ -158,16 +143,6 @@ class ImageDetails{
 
     getOriginalFileName(){
         return this.#fileName;
-    }
-
-    setUrlPath(pathDir) {
-        // note that the url path /a/b/c is represented as a_b_c to allow using on disk
-        // todo: consider storing the original path to allow calling code to parse as required
-        this.#dir = pathDir;
-    }
-
-    getUrlPath(){
-        return this.#dir;
     }
 
     setFileDirPath(aFileDirPath){
