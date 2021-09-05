@@ -42,6 +42,7 @@ const sitemap = new Sitemapper();
     TODOs:
     - NEXT
         - scan folder of images rather than urls and create a mirror folder with compressed images for local work
+        - GUI to setup the Qs and show Qs in Action to trigger from single image, url
     - typescript?
     - add tests for the modules and classes
     - configuration and defaults for hard coded values
