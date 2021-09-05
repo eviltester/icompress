@@ -26,6 +26,8 @@ const ImageStates = ImageDetails.States;
 
 const Persist = require("./imagePersistence");
 
+const Compress = require("./imageCompression");
+
 
 
 
@@ -78,7 +80,7 @@ Shell.exitIfCliToolNotInstalled("imagemagick", "magick -version", "https://image
 
 
 const options = yargs
- .usage("Usage: -i <inputfilename> -page <urlForAPageToProcess>")
+ .usage("Usage: -i <inputfilename> -p <urlForAPageToProcess> -x <sitemapurl>")
  .option("i", { alias: "inputname", describe: "Input file name", type: "string", demandOption: false })
  .option("p", { alias: "pageurl", describe: "Url for a page to process", type: "string", demandOption: false })
  .option("x", { alias: "xmlsitemap", describe: "XML Sitemap to scan for pages to process", type: "string", demandOption: false})
@@ -99,16 +101,29 @@ if(options.forceactions){
 const pageQManager = new PageQueues.PageQueueManager();
 const imageQManager = new ImageQueues.ImageQueueManager(forceactions);
 
+// process a single file
 if(options.inputname){
+
     const parsed = Path.parse(options.inputname);
     const fileName = parsed.name;
     const dir = "./" + parsed.dir;
+
     const inputImage = new ImageDetails.Image();
     inputImage.setSrc(Persist.combineIntoPath("local"+options.inputname));
     inputImage.setFullFilePath(options.inputname);
+    inputImage.setOriginalFileName(fileName);
     inputImage.setState(ImageStates.READY_TO_COMPRESS);
-    ImageQManager.addImageToCompressQueue(inputImage);
-    // todo: since this is a single file, we could just await the compression code
+
+    // todo: if there were other options e.g. -p or -x then we should add it to the queue and let the queues do the work
+    // imageQManager.addImageToCompressQueue(inputImage);
+    // but...since this is a single file, we can just await the compression code
+    (async() => {
+        console.log('about to compress single file');
+        await Compress.compress(inputImage, true, true);
+        console.log('compressed ' + fileName);
+        process.exit(0);
+    })();
+
 }
 
 
