@@ -15,13 +15,12 @@ const Path = require('path');
 // -quality xx%
 // -gaussian-blur 0.05
 // -interlace Plane (progressive compression)
-// todo: recommendations from Google Page Insights
 // https://developers.google.com/speed/docs/insights/OptimizeImages#optimizations-for-gif,-png,-and-jpeg-images
 // convert gif to png
 // convert INPUT.gif_or_png -strip [-resize WxH] [-alpha Remove] OUTPUT.png
 // convert INPUT.jpg -sampling-factor 4:2:0 -strip [-resize WxH] [-quality N] [-interlace JPEG] [-colorspace Gray/sRGB] OUTPUT.jpg
 
-// todo: we could generate different combinations
+// todo: we could generate different combinations and generate different Names based on the variables e.g. colour${colors}Depth${depth}Quality${quality}
 const commands = [
     {name: "quality", template: 'magick convert ${inputFileName} -strip -quality 85% ${outputFileName}', outputAppend : ""},
     {name: "colourDepthQuality32x08", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 -quality 85% ${outputFileName}', outputAppend : ""},
@@ -41,6 +40,8 @@ const commands = [
     {name: "qualityPNG", template: 'magick convert ${inputFileName} -strip -quality 85% ${outputFileName}', outputAppend : "png"},
 
 ];
+
+// todo investigate sharp for image processing https://sharp.pixelplumbing.com/
 
 // todo: allow configuration and profiles for image magick
 

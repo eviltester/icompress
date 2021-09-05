@@ -68,7 +68,7 @@ function createFolderStructureForImage(image, root) {
             image.setOriginalFileName(fileName);
 
             console.log("creating dir " + dir);
-            // todo: possibly have a state/queue for create imageDir or store output dir in the image as a field?
+
             const fileDirPath = combineIntoPath(
                                     image.getRootFolder(),
                                     dir,

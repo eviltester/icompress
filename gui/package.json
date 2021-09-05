@@ -1,0 +1,27 @@
+{
+  "name": "icompressgui",
+  "version": "1.0.0",
+  "description": "gui for icompress",
+  "main": "main.js",
+  "scripts": {
+    "test": "test",
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eviltester/icompress.git"
+  },
+  "keywords": [
+    "image",
+    "compression"
+  ],
+  "author": "Alan Richardson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/eviltester/icompress/issues"
+  },
+  "homepage": "https://github.com/eviltester/icompress#readme",
+  "devDependencies": {
+    "electron": "^14.0.0"
+  }
+}
