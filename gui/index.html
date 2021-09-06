@@ -3,14 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <!--
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+
     <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>Hello World!</title>
 </head>
 <body>
-<h1>Hello World!</h1>
-We are using Node.js <span id="node-version"></span>,
-Chromium <span id="chrome-version"></span>,
-and Electron <span id="electron-version"></span>.
+<h1>iCompress</h1>
+<div>
+    <button id="compresssinglefile">Compress Image In Folder</button>
+</div>
+<div>
+    <p id="messageresponse"></p>
+</div>
+
+
+<script>
+    const {ipcRenderer, dialog} = require( 'electron' );
+
+    document.getElementById( 'compresssinglefile' ).onclick = function() {
+        console.log("click")
+        console.log(dialog)
+        console.log('sending message')
+        ipcRenderer.invoke('app:compress-images-insitu').then(
+            (result) => {
+                document.getElementById("messageresponse").innerText = result;
+            }).catch((error) => {
+            document.getElementById("messageresponse").innerText = error;
+        });
+    };
+
+    // document.getElementById( 'compresssinglefile' ).onclick = function() {
+    //     const message = 'app:compress-images-insitu';
+    //     ipcRenderer.invoke(message, someArgument).then((result) => {
+    //
+    //     });
+    //     console.log( '[message sent]', message );
+    // }
+</script>
 </body>
 </html>

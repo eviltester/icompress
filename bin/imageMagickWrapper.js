@@ -82,7 +82,7 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
         }
     }
 
-    outputFileName = parsedPath.dir + Path.sep + command.name + "_" + parsedPath.name + ext;
+    outputFileName = Path.join(parsedPath.dir, command.name + "_" + parsedPath.name + ext);
 
     const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
 

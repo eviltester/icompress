@@ -73,7 +73,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
 function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick){
     const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
-    const pathPrefix = "./";
+    const pathPrefix = ""; // "./";
 
     // possibly use Path.relative() with "./" or preocess.cwd()
     const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
