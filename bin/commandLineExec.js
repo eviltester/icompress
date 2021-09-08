@@ -30,7 +30,11 @@ function exitIfCliToolNotInstalled(toolName, detectionCommand, installLink){
     }
 };
 
-function execParas(commandLineTemplate, params) {
+function execParas(commandLineTemplate, params, progressCallBack) {
+
+    if(!progressCallBack){
+        progressCallBack = (message) =>{console.log("execIfForceOrNew");console.log(message)}
+    }
 
     // params is an object where each field is a param
     const paramNames = Object.getOwnPropertyNames(params);
@@ -40,15 +44,15 @@ function execParas(commandLineTemplate, params) {
         commandLine = commandLine.split("${"+paramName+"}").join(params[paramName]);// parse the string and replace the template variables
     }
 
-    console.log(commandLine);
+    progressCallBack(commandLine);
 
     return new Promise((resolve, reject) => {
 
             execPromise(commandLine).
-            then((result)=>{console.log('stdout:', result);
+            then((result)=>{progressCallBack('stdout:', result);
                 resolve(result)})
                 .catch((error)=>{
-                    console.error('stderr:', error);
+                    progressCallBack('stderr:', error);
                     reject(error)
                 });
         }
@@ -56,22 +60,26 @@ function execParas(commandLineTemplate, params) {
 }
 
 function execIfForceOrNew(force, outputFileName,
-                          commandName, commandLineTemplate, params){
+                          commandName, commandLineTemplate, params, progressCallBack){
 
     if (typeof force === 'undefined') { force = false; }
+
+    if(!progressCallBack){
+        progressCallBack = (message) =>{console.log("execIfForceOrNew");console.log(message)}
+    }
 
     // do not run again if output already exists unless forced to run command
     if(!force && FS.existsSync(outputFileName)){
         const stats = FS.statSync(outputFileName);
         const fileSizeInBytes = stats.size;
         params.outputFileSize = fileSizeInBytes;
-        console.log("FILE EXISTS: skipping " + commandName + " compress for " + outputFileName);
+        progressCallBack("FILE EXISTS: skipping " + commandName + " compress for " + outputFileName);
         return new Promise(resolve => resolve(
             {command: commandLineTemplate, commandDetails: params, execResult: ""}));
     }
 
     return new Promise((resolve, reject)=>{
-        execParas(commandLineTemplate, params)
+        execParas(commandLineTemplate, params, progressCallBack)
             .then((result)=>{
                 const stats = FS.statSync(outputFileName);
                 const fileSizeInBytes = stats.size;

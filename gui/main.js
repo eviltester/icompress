@@ -70,8 +70,8 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
                 // imageQManager.addImageToCompressQueue(inputImage);
                 // but...since this is a single file, we can just await the compression code
                 (async () => {
-                    generalProgress('about to compress single file');
-                    await Compress.compress(inputImage, true, true);
+                    generalProgress('about to compress single file ' + inputImage.getFullFilePath());
+                    await Compress.compress(inputImage, true, true, generalProgress);
                     generalProgress('compressed ' + fileName);
                     //process.exit(0);
                 })();

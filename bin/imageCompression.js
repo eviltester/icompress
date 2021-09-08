@@ -35,7 +35,11 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompr
     });
 }
 
-function imageMagickCompress(imageToCompress, inputFileName, outputFileName, forceCompress) {
+function imageMagickCompress(imageToCompress, inputFileName, outputFileName, forceCompress, progressCallBack) {
+
+    if(!progressCallBack){
+        progressCallBack = (message) =>{console.log("imageMagickCompress:");console.log(message)}
+    }
 
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
@@ -43,7 +47,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
     for(command of ImageMagick.applicableCommands(inputFileName)){
         promises.push(
             new Promise((resolve, reject)=>{
-                ImageMagick.compressUsingCommand(command, inputFileName, outputFileName, forceCompress)
+                ImageMagick.compressUsingCommand(command, inputFileName, outputFileName, forceCompress, progressCallBack)
                     .then((result)=>{
                         imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
                         imageToCompress.addCommand(result.command, result.commandDetails);
@@ -71,9 +75,13 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
 }
 
-function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick){
+function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick, progressCallBack){
     const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
     const pathPrefix = ""; // "./";
+
+    if(!progressCallBack){
+        progressCallBack = (message) =>{console.log("compress:");console.log(message)}
+    }
 
     // possibly use Path.relative() with "./" or preocess.cwd()
     const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
@@ -101,7 +109,7 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     }else{
         // just apply image magic
         return new Promise((resolve, reject)=> {
-            imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
+            imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick, progressCallBack).then((image) => {
                 resolve(image);
             }).catch((image) => {
                 reject(image)

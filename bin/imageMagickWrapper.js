@@ -71,10 +71,14 @@ function applicableCommands(forFileName){
     return validCommands;
 }
 
-function imageMagickCompressCommand(command, inputFileName, outputFileName, forceCompress){
+function imageMagickCompressCommand(command, inputFileName, outputFileName, forceCompress, progressCallBack){
 
     const parsedPath = Path.parse(outputFileName);
     let ext = parsedPath.ext;
+
+    if(!progressCallBack){
+        progressCallBack = (message) =>{console.log("imageMagickCompressCommand");console.log(message)}
+    }
 
     if(command.outputAppend){
         if(!outputFileName.endsWith(command.outputAppend)){
@@ -92,16 +96,23 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
     return new Promise((resolve, reject)=> {
         // wrap in a promise and delete if output length is greater than input
         // this is particularly important when we generate combinations of commands
-        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
+        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails, progressCallBack).
         then((details)=>{
-                console.log("file size test");
+                progressCallBack("file size test on " + outputFileName);
                 //delete if output length is greater than input
                 details.commandDetails.status="COMPRESSED";
                 // todo: add a compression amount and %age
                 if(details.commandDetails.outputFileSize >= originalFileSizeInBytes){
-                    details.commandDetails.status="DELETED";
                     FS.unlink(outputFileName,
-                        ()=>{console.log("Error deleting " + outputFileName)});
+                        (err)=> {
+                            if (err) {
+                                progressCallBack("Error deleting " + outputFileName);
+                                throw(err);
+                            }
+                            details.commandDetails.status = "DELETED";
+                            progressCallBack("DELETED: " + details.commandDetails.outputFileSize +
+                                            " >= " + originalFileSizeInBytes + " - " + outputFileName);
+                        });
                 }
                 resolve(details);
             }
