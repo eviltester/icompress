@@ -7,9 +7,10 @@ const ImageDetails = require("../bin/imageDetails.js");
 const ImageStates = ImageDetails.States;
 const Compress = require("../bin/imageCompression");
 const Persist = require("../bin/imagePersistence");
+let win = undefined;
 
 function createWindow () {
-    const win = new BrowserWindow({
+    win = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
@@ -35,17 +36,26 @@ app.whenReady().then(() => {
     })
 })
 
+function generalProgress(message){
+    console.log(message);
+    if(typeof message === "object"){
+        message = JSON.stringify(message);
+    }
+    win.webContents.send('general-update', message);
+}
+
 ipcMain.handle('app:compress-images-insitu', async (event) => {
 
+
     // quick hack
-    console.log("received message")
+    generalProgress("received message")
 
     dialog.showOpenDialog({
         properties: ['openFile']
     }).then((response) => {
-        console.log(response)
+        generalProgress(response)
         if (!response.canceled && response.filePaths.length > 0) {
-            console.log("compresssing")
+            generalProgress("compresssing")
             for(inputFile of response.filePaths) {
                 const parsed = path.parse(inputFile);
                 const fileName = parsed.name;
@@ -60,10 +70,10 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
                 // imageQManager.addImageToCompressQueue(inputImage);
                 // but...since this is a single file, we can just await the compression code
                 (async () => {
-                    console.log('about to compress single file');
+                    generalProgress('about to compress single file');
                     await Compress.compress(inputImage, true, true);
-                    console.log('compressed ' + fileName);
-                    process.exit(0);
+                    generalProgress('compressed ' + fileName);
+                    //process.exit(0);
                 })();
             }
         }

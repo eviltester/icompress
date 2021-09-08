@@ -22,11 +22,10 @@
 
 
 <script>
-    const {ipcRenderer, dialog} = require( 'electron' );
+    const {ipcRenderer} = require( 'electron' );
 
     document.getElementById( 'compresssinglefile' ).onclick = function() {
         console.log("click")
-        console.log(dialog)
         console.log('sending message')
         ipcRenderer.invoke('app:compress-images-insitu').then(
             (result) => {
@@ -36,13 +35,12 @@
         });
     };
 
-    // document.getElementById( 'compresssinglefile' ).onclick = function() {
-    //     const message = 'app:compress-images-insitu';
-    //     ipcRenderer.invoke(message, someArgument).then((result) => {
-    //
-    //     });
-    //     console.log( '[message sent]', message );
-    // }
+    ipcRenderer.on('general-update', (event, message)=>{
+        const textArea = document.getElementById("messageresponse");
+        console.log(message);
+        textArea.innerText = message + "\n" + textArea.innerText;
+    })
+    
 </script>
 </body>
 </html>
