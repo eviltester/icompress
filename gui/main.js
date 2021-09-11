@@ -41,11 +41,23 @@ app.whenReady().then(() => {
     })
 })
 
-function generalProgress(message){
-    if(typeof message === "object"){
-        message = JSON.stringify(message);
+
+
+function generalProgress(event){
+    let message = event;
+    if(event.constructor.name === "Event"){
+        message = event.message;
+    }else {
+        if (typeof message === "object") {
+            message = JSON.stringify(event);
+        }
     }
     win.webContents.send('general-update', message);
+}
+function imageUpdate(anImage){
+    console.log(anImage);
+    // cannot send objects with functions so convert to a generic object first
+    win.webContents.send('image-update', JSON.parse(JSON.stringify(anImage)));
 }
 
 
@@ -78,9 +90,10 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
                 // but...since this is a single file, we can just await the compression code
                 (async () => {
                     generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-                    await Compress.compress(inputImage, true, true);
+                    anImage = await Compress.compress(inputImage, true, true);
                     generalProgress('compressed ' + fileName);
                     //process.exit(0);
+                    imageUpdate(anImage);
                 })();
             }
         }

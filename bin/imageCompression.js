@@ -84,7 +84,7 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
 
-    events.alertListeners("Starting Compress " + inputFileName);
+    events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
 
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
 

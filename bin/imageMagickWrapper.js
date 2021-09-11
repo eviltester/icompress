@@ -101,7 +101,7 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
         // this is particularly important when we generate combinations of commands
         Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
         then((details)=>{
-                events.alertListeners("file size test on " + outputFileName);
+                events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
                 //delete if output length is greater than input
                 details.commandDetails.status="COMPRESSED";
                 // todo: add a compression amount and %age
@@ -109,12 +109,12 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                     FS.unlink(outputFileName,
                         (err)=> {
                             if (err) {
-                                events.alertListeners("Error deleting " + outputFileName);
+                                events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
                                 throw(err);
                             }
                             details.commandDetails.status = "DELETED";
-                            events.alertListeners("DELETED: " + details.commandDetails.outputFileSize +
-                                            " >= " + originalFileSizeInBytes + " - " + outputFileName);
+                            events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
+                                            " >= " + originalFileSizeInBytes + " - " + outputFileName));
                         });
                 }
                 resolve(details);

@@ -32,129 +32,125 @@ class ImageDetails{
 
     // TODO: investigate the getter/setter shortcut code for JavaScript
 
-    #state;  // current state of the image processing
-    #states;  // states image has passed through
-    #src;   // where was this image found url or file path
-    #errorReport;   // a list of error reports for the error over time
-    #commands;    // the commands and results that have been run on the image
-    #fullFilePath;   // the downloaded file for the original image
-    #fileDirPath;    // where any output for the file will be stored
-    #contentLength; // the length reported by headers ... todo: replaced by actual file length once downloaded
-    #contentType; // the type of image
-    #foundOnPage; // the url for the page the image was found on (todo: this might need to be an array to avoid duplication)
-    #rootFolder; // the main parent output folder
-    #fileName;   // the filename without any paths for the original image (todo: could be derived from src)
+    // #state;  // current state of the image processing
+    // #states;  // states image has passed through
+    // #src;   // where was this image found url or file path
+    // #errorReport;   // a list of error reports for the error over time
+    // #commands;    // the commands and results that have been run on the image
+    // #fullFilePath;   // the downloaded file for the original image
+    // #fileDirPath;    // where any output for the file will be stored
+    // #contentLength; // the length reported by headers ... todo: replaced by actual file length once downloaded
+    // #contentType; // the type of image
+    // #foundOnPage; // the url for the page the image was found on (todo: this might need to be an array to avoid duplication)
+    // #rootFolder; // the main parent output folder
+    // #fileName;   // the filename without any paths for the original image (todo: could be derived from src)
 
 
     constructor(){
-        this.#state = ImageStates.INITIALISED;
-        this.#states = [ImageStates.INITIALISED];
-        this.#src = "";
-        this.#errorReport = "";
-        this.#commands= [];
+        this.state = ImageStates.INITIALISED;
+        this.states = [ImageStates.INITIALISED];
+        this.src = "";
+        this.errorReport = "";
+        this.commands= [];
 
 
         // since the fields are private we need to have a toJSON if we want to use JSON.Stringify
         // remember we need a fromJSON if we want to deserialize in the future
-        this.toJSON = function() {
-            return {
-                state : this.#state,
-                states : this.#states,
-                src : this.#src,
-                foundOnPage : this.#foundOnPage,
-                contentLength: this.#contentLength,
-                contentType: this.#contentType,
-                fullFilePath : this.#fullFilePath,
-                fileDirPath : this.#fileDirPath,
-                rootFolder : this.#rootFolder,
-                fileName : this.#fileName,
-                commands: this.#commands,
-                errorReport: this.#errorReport,
-            };
-        };
+        // this.toJSON = function() {
+        //     return {
+        //         state : this.#state,
+        //         states : this.#states,
+        //         src : this.#src,
+        //         foundOnPage : this.#foundOnPage,
+        //         contentLength: this.#contentLength,
+        //         contentType: this.#contentType,
+        //         fullFilePath : this.#fullFilePath,
+        //         fileDirPath : this.#fileDirPath,
+        //         rootFolder : this.#rootFolder,
+        //         fileName : this.#fileName,
+        //         commands: this.#commands,
+        //         errorReport: this.#errorReport,
+        //     };
+        // };
 
     }
 
     setState(newState){
-
-        console.log(this.#src);
-        console.log(newState);
-
-        this.#state = newState;
-        this.#states.push(newState);
+        this.state = newState;
+        this.states.push(newState);
     }
 
     getState(){
-        return this.#state;
+        return this.state;
     }
 
     addErrorReport = (error)=> {
-        console.log(error);
-        this.#errorReport = error;
+        console.log(error)
+        this.errorReport = error;
     };
 
     setSrc(aUrl) {
-        this.#src = aUrl;
+        this.src = aUrl;
     }
 
     getSrc() {
-        return this.#src;
+        return this.src;
     }
 
     setFullFilePath(inputName) {
-        this.#fullFilePath = inputName;
+        this.fullFilePath = inputName;
     }
 
     getFullFilePath() {
-        return this.#fullFilePath;
+        return this.fullFilePath;
     }
 
     setContentLength(contentLength) {
-        this.#contentLength = contentLength;
+        this.contentLength = contentLength;
     }
 
     getContentLength() {
-        return this.#contentLength;
+        return this.contentLength;
     }
 
     setContentType(contentType) {
-        this.#contentType = contentType;
+        this.contentType = contentType;
     }
 
     setFoundOnPageUrl(pageUrl){
-        this.#foundOnPage = pageUrl;
+        this.foundOnPage = pageUrl;
     }
 
     getFoundOnPage(){
-        return this.#foundOnPage;
+        return this.foundOnPage;
     }
 
     setRootFolder(aRootFolder) {
-        this.#rootFolder = aRootFolder;
+        this.rootFolder = aRootFolder;
     }
 
     getRootFolder(aRootFolder) {
-        return this.#rootFolder;
+        return this.rootFolder;
     }
 
     setOriginalFileName(fileNameFromUrl){
-        this.#fileName = fileNameFromUrl;
+        this.fileName = fileNameFromUrl;
     }
 
     getOriginalFileName(){
-        return this.#fileName;
+        return this.fileName;
     }
 
     setFileDirPath(aFileDirPath){
-        this.#fileDirPath = aFileDirPath;
+        this.fileDirPath = aFileDirPath;
     }
 
     getFileDirPath(aFileDirPath){
-        return this.#fileDirPath;
+        return this.fileDirPath;
     }
 
     addCommand(cli, commandDetails){
-        this.#commands.push({command: cli, details: commandDetails});
+        this.commands.push({command: cli, details: commandDetails});
     }
 }
 
