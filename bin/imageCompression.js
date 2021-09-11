@@ -16,6 +16,10 @@ const ImageMagick = require("./imageMagickWrapper.js");
 
 // todo: in the future allow custom commands to be added for images
 
+const Events = require("./Events.js");
+const events = new Events.Register();
+events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+events.includeInRegisterChain(ImageMagick.events);
 
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompress) {
 
@@ -35,11 +39,7 @@ function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompr
     });
 }
 
-function imageMagickCompress(imageToCompress, inputFileName, outputFileName, forceCompress, progressCallBack) {
-
-    if(!progressCallBack){
-        progressCallBack = (message) =>{console.log("imageMagickCompress:");console.log(message)}
-    }
+function imageMagickCompress(imageToCompress, inputFileName, outputFileName, forceCompress) {
 
     imageToCompress.setState(ImageStates.COMPRESSING_VIA_IMAGEMAGICK);
 
@@ -47,7 +47,7 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
     for(command of ImageMagick.applicableCommands(inputFileName)){
         promises.push(
             new Promise((resolve, reject)=>{
-                ImageMagick.compressUsingCommand(command, inputFileName, outputFileName, forceCompress, progressCallBack)
+                ImageMagick.compressUsingCommand(command, inputFileName, outputFileName, forceCompress)
                     .then((result)=>{
                         imageToCompress.setState(ImageStates.COMPRESSED_VIA_IMAGEMAGICK);
                         imageToCompress.addCommand(result.command, result.commandDetails);
@@ -75,18 +75,16 @@ function imageMagickCompress(imageToCompress, inputFileName, outputFileName, for
 
 }
 
-function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick, progressCallBack){
+function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick){
     const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
     const pathPrefix = ""; // "./";
-
-    if(!progressCallBack){
-        progressCallBack = (message) =>{console.log("compress:");console.log(message)}
-    }
 
     // possibly use Path.relative() with "./" or preocess.cwd()
     const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
     const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
+
+    events.alertListeners("Starting Compress " + inputFileName);
 
     if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
 
@@ -109,7 +107,7 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     }else{
         // just apply image magic
         return new Promise((resolve, reject)=> {
-            imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick, progressCallBack).then((image) => {
+            imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
                 resolve(image);
             }).catch((image) => {
                 reject(image)
@@ -118,8 +116,13 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     }
 }
 
+
+
+
+
 module.exports={
     ffmpeg: ffmpegCompress,
     imageMagick: imageMagickCompress,
-    compress: compress
+    compress: compress,
+    events: events
 }

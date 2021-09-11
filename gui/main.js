@@ -9,6 +9,11 @@ const Compress = require("../bin/imageCompression");
 const Persist = require("../bin/imagePersistence");
 let win = undefined;
 
+
+const Events = require("../bin/Events.js");
+const events = new Events.Register();
+events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+
 function createWindow () {
     win = new BrowserWindow({
         width: 800,
@@ -37,12 +42,14 @@ app.whenReady().then(() => {
 })
 
 function generalProgress(message){
-    console.log(message);
     if(typeof message === "object"){
         message = JSON.stringify(message);
     }
     win.webContents.send('general-update', message);
 }
+
+
+Compress.events.registerListener("general-update", generalProgress);
 
 ipcMain.handle('app:compress-images-insitu', async (event) => {
 
@@ -71,7 +78,7 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
                 // but...since this is a single file, we can just await the compression code
                 (async () => {
                     generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-                    await Compress.compress(inputImage, true, true, generalProgress);
+                    await Compress.compress(inputImage, true, true);
                     generalProgress('compressed ' + fileName);
                     //process.exit(0);
                 })();

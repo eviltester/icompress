@@ -2,6 +2,13 @@ const Shell = require("./commandLineExec.js");
 const FS = require('fs');
 const Path = require('path');
 
+
+const Events = require("./Events.js");
+const events = new Events.Register();
+
+events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+events.includeInRegisterChain(Shell.events);
+
 // This just wraps imageMagick
 
 // add config to experiment with the different attributes for compression e.g. fps values, scale and resize
@@ -71,14 +78,10 @@ function applicableCommands(forFileName){
     return validCommands;
 }
 
-function imageMagickCompressCommand(command, inputFileName, outputFileName, forceCompress, progressCallBack){
+function imageMagickCompressCommand(command, inputFileName, outputFileName, forceCompress){
 
     const parsedPath = Path.parse(outputFileName);
     let ext = parsedPath.ext;
-
-    if(!progressCallBack){
-        progressCallBack = (message) =>{console.log("imageMagickCompressCommand");console.log(message)}
-    }
 
     if(command.outputAppend){
         if(!outputFileName.endsWith(command.outputAppend)){
@@ -96,9 +99,9 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
     return new Promise((resolve, reject)=> {
         // wrap in a promise and delete if output length is greater than input
         // this is particularly important when we generate combinations of commands
-        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails, progressCallBack).
+        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
         then((details)=>{
-                progressCallBack("file size test on " + outputFileName);
+                events.alertListeners("file size test on " + outputFileName);
                 //delete if output length is greater than input
                 details.commandDetails.status="COMPRESSED";
                 // todo: add a compression amount and %age
@@ -106,11 +109,11 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                     FS.unlink(outputFileName,
                         (err)=> {
                             if (err) {
-                                progressCallBack("Error deleting " + outputFileName);
+                                events.alertListeners("Error deleting " + outputFileName);
                                 throw(err);
                             }
                             details.commandDetails.status = "DELETED";
-                            progressCallBack("DELETED: " + details.commandDetails.outputFileSize +
+                            events.alertListeners("DELETED: " + details.commandDetails.outputFileSize +
                                             " >= " + originalFileSizeInBytes + " - " + outputFileName);
                         });
                 }
@@ -126,5 +129,6 @@ module.exports={
     commands: commands,
     compressUsingCommand: imageMagickCompressCommand,
     compress: imageMagickCompress,
-    applicableCommands : applicableCommands
+    applicableCommands : applicableCommands,
+    events: events
 }

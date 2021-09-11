@@ -2,6 +2,10 @@ const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
 const FS = require('fs');
 
+const Events = require("./Events.js");
+const events = new Events.Register();
+events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
         exec(command, (error, stdout, stderr) => {
@@ -25,15 +29,17 @@ function commandExists(command){
 
 function exitIfCliToolNotInstalled(toolName, detectionCommand, installLink){
     if(!commandExists(detectionCommand)){
-        console.log(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`);
+        events.alertListeners(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`)
+        //console.log(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`);
         process.exit(-1);
     }
 };
 
-function execParas(commandLineTemplate, params, progressCallBack) {
+function execParas(commandLineTemplate, params) {
 
-    if(!progressCallBack){
-        progressCallBack = (message) =>{console.log("execIfForceOrNew");console.log(message)}
+    alertMessage = (message) =>{
+        events.alertListeners("execParas");
+        events.alertListeners(message)
     }
 
     // params is an object where each field is a param
@@ -44,15 +50,16 @@ function execParas(commandLineTemplate, params, progressCallBack) {
         commandLine = commandLine.split("${"+paramName+"}").join(params[paramName]);// parse the string and replace the template variables
     }
 
-    progressCallBack(commandLine);
+    alertMessage(commandLine);
 
     return new Promise((resolve, reject) => {
 
             execPromise(commandLine).
-            then((result)=>{progressCallBack('stdout:', result);
-                resolve(result)})
+            then((result)=>{
+                    alertMessage(result);
+                    resolve(result)})
                 .catch((error)=>{
-                    progressCallBack('stderr:', error);
+                    alertMessage(error);
                     reject(error)
                 });
         }
@@ -60,26 +67,27 @@ function execParas(commandLineTemplate, params, progressCallBack) {
 }
 
 function execIfForceOrNew(force, outputFileName,
-                          commandName, commandLineTemplate, params, progressCallBack){
+                          commandName, commandLineTemplate, params){
 
     if (typeof force === 'undefined') { force = false; }
 
-    if(!progressCallBack){
-        progressCallBack = (message) =>{console.log("execIfForceOrNew");console.log(message)}
-    }
+    alertMessage = (message) =>{
+            events.alertListeners("execIfForceOrNew");
+            events.alertListeners(message)
+        }
 
     // do not run again if output already exists unless forced to run command
     if(!force && FS.existsSync(outputFileName)){
         const stats = FS.statSync(outputFileName);
         const fileSizeInBytes = stats.size;
         params.outputFileSize = fileSizeInBytes;
-        progressCallBack("FILE EXISTS: skipping " + commandName + " compress for " + outputFileName);
+        alertMessage("FILE EXISTS: skipping " + commandName + " compress for " + outputFileName);
         return new Promise(resolve => resolve(
             {command: commandLineTemplate, commandDetails: params, execResult: ""}));
     }
 
     return new Promise((resolve, reject)=>{
-        execParas(commandLineTemplate, params, progressCallBack)
+        execParas(commandLineTemplate, params)
             .then((result)=>{
                 const stats = FS.statSync(outputFileName);
                 const fileSizeInBytes = stats.size;
@@ -97,5 +105,6 @@ module.exports = {
     execParas,
     commandExists,
     exitIfCliToolNotInstalled,
-    execIfForceOrNew
+    execIfForceOrNew,
+    events
 }
