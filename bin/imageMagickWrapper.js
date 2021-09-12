@@ -43,7 +43,8 @@ const commands = [
     {name: "colourDepthQuality256x16", template: 'magick convert ${inputFileName} -strip +dither -colors 256 -depth 16 -quality 85% ${outputFileName}', outputAppend : ""},
     {name: "jpgSampler", template: 'magick convert ${inputFileName} -sampling-factor 4:2:0 -strip -quality 85% -interlace JPEG ${outputFileName}', outputAppend : "jpg"},
     {name: "jpgProgressive", template: 'magick convert ${inputFileName} -strip -quality 85% -interlace Plane ${outputFileName}', outputAppend : "jpg"},
-    {name: "colourDepthPNG", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : ""}
+    {name: "colourDepthPNG", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : "png"},
+    {name: "qualityPNG", template: 'magick convert ${inputFileName} -strip -quality 85% ${outputFileName}', outputAppend : "png"},
 ];
 
 // todo investigate sharp for image processing https://sharp.pixelplumbing.com/
