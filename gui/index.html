@@ -85,7 +85,6 @@
         let commands = "";
 
         // todo: order by outputfilesize
-        // todo: bug where deleted files are not alays set to status DELETED
         for(const command of anImage.commands){
             let outputFileNameRender = "";
             if(command.details.status!="DELETED"){

@@ -43,9 +43,7 @@ const commands = [
     {name: "colourDepthQuality256x16", template: 'magick convert ${inputFileName} -strip +dither -colors 256 -depth 16 -quality 85% ${outputFileName}', outputAppend : ""},
     {name: "jpgSampler", template: 'magick convert ${inputFileName} -sampling-factor 4:2:0 -strip -quality 85% -interlace JPEG ${outputFileName}', outputAppend : "jpg"},
     {name: "jpgProgressive", template: 'magick convert ${inputFileName} -strip -quality 85% -interlace Plane ${outputFileName}', outputAppend : "jpg"},
-    {name: "colourDepthPNG", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : ""},
-    {name: "qualityPNG", template: 'magick convert ${inputFileName} -strip -quality 85% ${outputFileName}', outputAppend : "png"},
-
+    {name: "colourDepthPNG", template: 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}', outputAppend : ""}
 ];
 
 // todo investigate sharp for image processing https://sharp.pixelplumbing.com/
@@ -83,7 +81,7 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
     const parsedPath = Path.parse(outputFileName);
     let ext = parsedPath.ext;
 
-    if(command.outputAppend){
+    if(command.outputAppend && command.outputAppend!=""){
         if(!outputFileName.endsWith(command.outputAppend)){
             ext = "." + command.outputAppend;
         }
@@ -106,16 +104,26 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                 details.commandDetails.status="COMPRESSED";
                 // todo: add a compression amount and %age
                 if(details.commandDetails.outputFileSize >= originalFileSizeInBytes){
-                    FS.unlink(outputFileName,
-                        (err)=> {
-                            if (err) {
-                                events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
-                                throw(err);
-                            }
-                            details.commandDetails.status = "DELETED";
-                            events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
-                                            " >= " + originalFileSizeInBytes + " - " + outputFileName));
-                        });
+                    try{
+                        FS.unlinkSync(outputFileName);
+                        details.commandDetails.status = "DELETED";
+                        events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
+                            " >= " + originalFileSizeInBytes + " - " + outputFileName));
+
+                    }catch(err){
+                        events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
+                        throw(err);
+                    }
+                    // FS.unlink(outputFileName,
+                    //     (err)=> {
+                    //         if (err) {
+                    //             events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
+                    //             throw(err);
+                    //         }
+                    //         details.commandDetails.status = "DELETED";
+                    //         events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
+                    //                         " >= " + originalFileSizeInBytes + " - " + outputFileName));
+                    //     });
                 }
                 resolve(details);
             }

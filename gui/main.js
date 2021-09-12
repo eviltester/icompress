@@ -78,7 +78,7 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
             generalProgress("compresssing")
             for(inputFile of response.filePaths) {
                 const parsed = path.parse(inputFile);
-                const fileName = parsed.name;
+                const fileName = parsed.base;
                 const dir = parsed.dir;
 
                 const inputImage = new ImageDetails.Image();
