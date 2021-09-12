@@ -114,16 +114,6 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                         events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
                         throw(err);
                     }
-                    // FS.unlink(outputFileName,
-                    //     (err)=> {
-                    //         if (err) {
-                    //             events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
-                    //             throw(err);
-                    //         }
-                    //         details.commandDetails.status = "DELETED";
-                    //         events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
-                    //                         " >= " + originalFileSizeInBytes + " - " + outputFileName));
-                    //     });
                 }
                 resolve(details);
             }
