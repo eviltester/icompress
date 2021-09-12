@@ -15,9 +15,18 @@
 <h1>iCompress</h1>
 <div>
     <!-- TODO: (Compress image to folder) button, choose input file and output folder, then have an 'replace original' button next to output files to copy compressed files-->
-    <button id="compresssinglefile">Compress Image In Folder</button>
+    <div>
+        <p><button id="chooseFileToCompress">Choose</button><label for="inputfile">File To compress:</label><span id='inputfile'></span></p>
+        <img id="fileToCompress" width="200px" height="auto" style="display:none" />
+    </div>
+    <div>
+        <p><button id="chooseOutputFolder">Choose</button><label for="outputfolder">Output Folder:</label><span id='outputfolder' ></span></p>
+    </div>
+    <button id="compresssinglefile">Compress Image In Current Folder</button>
+    <button id="compresssinglefileTo">Compress Image To Output Folder</button>
 </div>
 <div>
+    <div id="errorMessage"></div>
     <div id="imagedetails"></div>
     <pre id="imageresponse"></pre>
     <p id="messageresponse"></p>
@@ -27,14 +36,45 @@
 <script>
     const {ipcRenderer, shell} = require( 'electron' );
 
+    document.getElementById( 'chooseFileToCompress' ).onclick = function() {
+        ipcRenderer.invoke('app:compress-choose-input-file');
+    }
+    document.getElementById( 'chooseOutputFolder' ).onclick = function() {
+        ipcRenderer.invoke('app:compress-choose-output-folder');
+    }
     document.getElementById( 'compresssinglefile' ).onclick = function() {
-        console.log("click")
-        console.log('sending message')
-        ipcRenderer.invoke('app:compress-images-insitu').then(
+        const inputFileName = document.getElementById("inputfile").innerText;
+        if(inputFileName.length==0){
+            alert("You must choose an input file to compress");
+            return;
+        }
+        ipcRenderer.invoke('app:compress-images-insitu', inputFileName).then(
             (result) => {
-                document.getElementById("messageresponse").innerText = result;
+                //document.getElementById("messageresponse").innerText = result;
             }).catch((error) => {
-            document.getElementById("messageresponse").innerText = error;
+                document.getElementById("errorMessage").innerText = error;
+        });
+    };
+
+    document.getElementById( 'compresssinglefileTo' ).onclick = function() {
+        const inputFileName = document.getElementById("inputfile").innerText;
+        const outputFolder = document.getElementById("outputfolder").innerText;
+
+        if(inputFileName.trim().length==0){
+            alert("You must choose an input file to compress");
+            return;
+        }
+
+        if(outputFolder.trim().length==0){
+            alert("You must choose an output folder to save to");
+            return;
+        }
+
+        ipcRenderer.invoke('app:compress-images-to', inputFileName, outputFolder).then(
+            (result) => {
+                //document.getElementById("messageresponse").innerText = result;
+            }).catch((error) => {
+            document.getElementById("errorMessage").innerText = error;
         });
     };
 
@@ -50,6 +90,24 @@
         console.log(anImage);
         imageArea.innerText = JSON.stringify(anImage, null, 2);
         document.getElementById("imagedetails").innerHTML=imageUpdateHTML(anImage);
+    })
+
+    ipcRenderer.on('chosen-input-file', (event, aFilePath)=>{
+        const fileName = document.getElementById("inputfile");
+        fileName.innerText = aFilePath;
+        if(aFilePath.trim()==""){
+            imgElem.src = "";
+            imgElem.style="display:none";
+            return;
+        }
+        const imgElem = document.getElementById("fileToCompress");
+        imgElem.src = aFilePath;
+        imgElem.style="display";
+    })
+
+    ipcRenderer.on('chosen-output-folder', (event, aFilePath)=>{
+        const fileName = document.getElementById("outputfolder");
+        fileName.innerText = aFilePath;
     })
 
     function openFolder(aPath){
@@ -91,7 +149,11 @@
             if(command.details.status!="DELETED"){
                 outputFileNameRender = `
                     <button onClick="openFolder('${command.details.outputFileName}')">Open At</button>
-                    <a href="${command.details.outputFileName}" target="_blank">${command.details.outputFileName}</a>`;
+                    <br/>
+                    <a href="${command.details.outputFileName}" target="_blank">${command.details.outputFileName}</a>
+                    <br/>
+                    <img src='${command.details.outputFileName}' width:'200px' height:"auto"/>
+                    `;
             }else{
                 outputFileNameRender = `${command.details.outputFileName}`;
             }
@@ -99,7 +161,7 @@
                 `<li><pre>${command.command}</pre></li>
                  <li>${outputFileNameRender}</li>
                  <li>Output Size: ${command.details.outputFileSize}</li>
-                 <li>Compression % : ${(command.details.outputFileSize / anImage.contentLength)*100}</li>
+                 <li>Compressed To % : ${(command.details.outputFileSize / anImage.contentLength)*100}</li>
                  <li>Stats: ${command.details.status}</li>
                 `
         }

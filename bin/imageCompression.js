@@ -13,6 +13,7 @@ const ImageDetails = require("./imageDetails.js");
 const ImageStates = ImageDetails.States;
 const FFMPEG = require("./ffmpegWrapper.js");
 const ImageMagick = require("./imageMagickWrapper.js");
+const Persist = require("./imagePersistence");
 
 // todo: in the future allow custom commands to be added for images
 
@@ -80,9 +81,55 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     const pathPrefix = ""; // "./";
 
     // possibly use Path.relative() with "./" or preocess.cwd()
+    // const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
+    // const ffmpegOutputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
+    // const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
+
+    return compressTo(imageToCompress, pathPrefix + writtenImagePath.dir, forceCompressFfmpeg, forceCompressImageMagick);
+
+    // events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
+    //
+    // if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
+    //
+    //     return new Promise((resolve, reject)=> {
+    //         ffmpegCompress(imageToCompress, inputFileName, ffmpegOutputFileName, forceCompressFfmpeg)
+    //             .then((image) => {
+    //                 imageMagickCompress(imageToCompress, ffmpegOutputFileName, compressedFileName, forceCompressImageMagick)
+    //                     .then((image) => {
+    //                         resolve(image);
+    //                     })
+    //                     .catch((image) => {
+    //                         reject(image);
+    //                     });
+    //             })
+    //             .catch((image) => {
+    //                 reject(image);
+    //             });
+    //     });
+    //
+    // }else{
+    //     // just apply image magic
+    //     return new Promise((resolve, reject)=> {
+    //         imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
+    //             resolve(image);
+    //         }).catch((image) => {
+    //             reject(image)
+    //         });
+    //     });
+    // }
+}
+
+function compressTo(imageToCompress, outputFilePath, forceCompressFfmpeg, forceCompressImageMagick){
+    const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
+    const pathPrefix = ""; // "./";
+
+    // possibly use Path.relative() with "./" or preocess.cwd()
     const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
-    const outputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
-    const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
+    const outputFilePathParsed = Path.parse(outputFilePath);
+
+    Persist.createDir(outputFilePath);
+    const outputFileName = pathPrefix + outputFilePath + Path.sep + "ffmpeged-" + writtenImagePath.base;
+    const compressedFileName = pathPrefix + outputFilePath + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
 
     events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
 
@@ -118,11 +165,10 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
 
 
 
-
-
 module.exports={
     ffmpeg: ffmpegCompress,
     imageMagick: imageMagickCompress,
     compress: compress,
+    compressTo: compressTo,
     events: events
 }

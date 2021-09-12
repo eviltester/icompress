@@ -64,43 +64,115 @@ function imageUpdate(anImage){
 
 Compress.events.registerListener("general-update", generalProgress);
 
-ipcMain.handle('app:compress-images-insitu', async (event) => {
-
-
-    // quick hack
-    generalProgress("received message")
-
+ipcMain.handle('app:compress-choose-input-file', async (event) => {
     dialog.showOpenDialog({
-        properties: ['openFile']
-    }).then((response) => {
-        generalProgress(response)
-        if (!response.canceled && response.filePaths.length > 0) {
-            generalProgress("compresssing")
-            for(inputFile of response.filePaths) {
-                const parsed = path.parse(inputFile);
-                const fileName = parsed.base;
-                const dir = parsed.dir;
-
-                const inputImage = new ImageDetails.Image();
-                inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
-                inputImage.setFullFilePath(inputFile);
-                inputImage.setOriginalFileName(fileName);
-                inputImage.setState(ImageStates.READY_TO_COMPRESS);
-
-                const stats = FS.statSync(inputFile);
-                inputImage.setContentLength(stats.size);
-
-                // imageQManager.addImageToCompressQueue(inputImage);
-                // but...since this is a single file, we can just await the compression code
-                (async () => {
-                    generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-                    anImage = await Compress.compress(inputImage, true, true);
-                    generalProgress('compressed ' + fileName);
-                    //process.exit(0);
-                    imageUpdate(anImage);
-                })();
-            }
+        properties: ['openFile'],
+        message: "Choose File to Compress"
+    }).then((response)=>{
+        if (!response.canceled && response.filePaths.length > 0){
+            win.webContents.send('chosen-input-file', response.filePaths[0]);
         }
-    }).catch((error) => {return error;})
+    }).catch((err)=>{})
+
+})
+
+ipcMain.handle('app:compress-choose-output-folder', async (event) => {
+    dialog.showOpenDialog({
+        properties: ['openDirectory','createDirectory','promptToCreate'],
+        message: "Choose Output Folder"
+    }).then((response)=>{
+        if (!response.canceled && response.filePaths.length > 0){
+            win.webContents.send('chosen-output-folder', response.filePaths[0]);
+        }
+    }).catch((err)=>{})
+})
+
+ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
+
+    generalProgress("compressing in situ: " + inputFile);
+
+    return new Promise((resolve, reject)=>{
+
+        if (!inputFile || inputFile.trim().length==0) {
+            throw "Require an input file to compress";
+        }
+
+        if(!FS.existsSync(inputFile)){
+            throw "Could not find input file " + inputFile;
+        }
+
+            const parsed = path.parse(inputFile);
+            const fileName = parsed.base;
+            const dir = parsed.dir;
+
+            const inputImage = new ImageDetails.Image();
+            inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
+            inputImage.setFullFilePath(inputFile);
+            inputImage.setOriginalFileName(fileName);
+            inputImage.setState(ImageStates.READY_TO_COMPRESS);
+
+            const stats = FS.statSync(inputFile);
+            inputImage.setContentLength(stats.size);
+
+            // imageQManager.addImageToCompressQueue(inputImage);
+            // but...since this is a single file, we can just await the compression code
+            (async () => {
+                generalProgress('about to compress single file ' + inputImage.getFullFilePath());
+                anImage = await Compress.compress(inputImage, true, true);
+                generalProgress('compressed ' + fileName);
+                //process.exit(0);
+                imageUpdate(anImage);
+            })();
+
+            resolve("Compressed " + inputFile);
+
+    }).catch((error) => {reject(error)})
+
+})
+
+ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) => {
+
+    generalProgress("compressing: " + inputFile);
+    generalProgress("outputFolder: " + outputFolder);
+
+    return new Promise((resolve, reject)=>{
+
+        if (!inputFile || inputFile.trim().length==0) {
+            throw "Require an input file to compress";
+        }
+
+        if(!FS.existsSync(inputFile)){
+            throw "Could not find input file " + inputFile;
+        }
+
+        if (!outputFolder || outputFolder.trim().length==0) {
+            throw "Require an output file to save to";
+        }
+
+        const parsed = path.parse(inputFile);
+        const fileName = parsed.base;
+        const dir = parsed.dir;
+
+        const inputImage = new ImageDetails.Image();
+        inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
+        inputImage.setFullFilePath(inputFile);
+        inputImage.setOriginalFileName(fileName);
+        inputImage.setState(ImageStates.READY_TO_COMPRESS);
+
+        const stats = FS.statSync(inputFile);
+        inputImage.setContentLength(stats.size);
+
+        // imageQManager.addImageToCompressQueue(inputImage);
+        // but...since this is a single file, we can just await the compression code
+        (async () => {
+            generalProgress('about to compress single file ' + inputImage.getFullFilePath());
+            anImage = await Compress.compressTo(inputImage, outputFolder, true, true);
+            generalProgress('compressed ' + fileName);
+            imageUpdate(anImage);
+        })();
+
+        resolve("Compressed " + inputFile);
+
+    }).catch((error) => {reject(error)})
 
 })
