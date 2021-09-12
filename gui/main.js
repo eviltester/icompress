@@ -9,6 +9,7 @@ const Compress = require("../bin/imageCompression");
 const Persist = require("../bin/imagePersistence");
 let win = undefined;
 
+const FS = require('fs');
 
 const Events = require("../bin/Events.js");
 const events = new Events.Register();
@@ -85,6 +86,9 @@ ipcMain.handle('app:compress-images-insitu', async (event) => {
                 inputImage.setFullFilePath(inputFile);
                 inputImage.setOriginalFileName(fileName);
                 inputImage.setState(ImageStates.READY_TO_COMPRESS);
+
+                const stats = FS.statSync(inputFile);
+                inputImage.setContentLength(stats.size);
 
                 // imageQManager.addImageToCompressQueue(inputImage);
                 // but...since this is a single file, we can just await the compression code

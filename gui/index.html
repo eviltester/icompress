@@ -17,13 +17,14 @@
     <button id="compresssinglefile">Compress Image In Folder</button>
 </div>
 <div>
+    <div id="imagedetails"></div>
     <pre id="imageresponse"></pre>
     <p id="messageresponse"></p>
 </div>
 
 
 <script>
-    const {ipcRenderer} = require( 'electron' );
+    const {ipcRenderer, shell} = require( 'electron' );
 
     document.getElementById( 'compresssinglefile' ).onclick = function() {
         console.log("click")
@@ -47,8 +48,76 @@
         const imageArea = document.getElementById("imageresponse");
         console.log(anImage);
         imageArea.innerText = JSON.stringify(anImage, null, 2);
+        document.getElementById("imagedetails").innerHTML=imageUpdateHTML(anImage);
     })
-    
+
+    function openFolder(aPath){
+        shell.showItemInFolder(aPath);
+    }
+
+    function imageUpdateHTML(anImage){
+
+        let src = "";
+        if(anImage.src){
+            if(anImage.src.startsWith("local")){
+                src = `<li>Local File: <a href='file://${anImage.fullFilePath}' target="_blank">${anImage.fileName}</a></li>`
+            }else{
+                src = `<li>Web Image: <a href='${anImage.src}' target="_blank">${anImage.src}</a></li>`
+            }
+        }
+        let originalFileSize="";
+        if(anImage.contentLength){
+            originalFileSize = `<li>Original File Size: ${anImage.contentLength}`;
+        }
+        let downloadFile="";
+        if(anImage.fullFilePath){
+            downloadFile=`<li>Downloaded File:
+                            <button onClick="openFolder('${anImage.fullFilePath}')">Open At</button>
+                            <a href='${anImage.fullFilePath}' target="_blank">${anImage.fullFilePath}</a>
+                           </li>`;
+        }
+        let errorReport = "";
+        if(anImage.errorReport){
+            errorReport=`<div><pre>${anImage.errorReport}</pre></div>`;
+        }
+        let commandsStart = anImage.commands ? "<ul>" : "";
+        let commandsEnd = anImage.commands ? "</ul>" : "";
+        let commands = "";
+
+        // todo: order by outputfilesize
+        // todo: bug where deleted files are not alays set to status DELETED
+        for(const command of anImage.commands){
+            let outputFileNameRender = "";
+            if(command.details.status!="DELETED"){
+                outputFileNameRender = `
+                    <button onClick="openFolder('${command.details.outputFileName}')">Open At</button>
+                    <a href="${command.details.outputFileName}" target="_blank">${command.details.outputFileName}</a>`;
+            }else{
+                outputFileNameRender = `${command.details.outputFileName}`;
+            }
+            commands = commands +
+                `<li><pre>${command.command}</pre></li>
+                 <li>${outputFileNameRender}</li>
+                 <li>Output Size: ${command.details.outputFileSize}</li>
+                 <li>Compression % : ${(command.details.outputFileSize / anImage.contentLength)*100}</li>
+                 <li>Stats: ${command.details.status}</li>
+                `
+        }
+
+        return `
+            <div class="image-report">
+                <ul>
+                    ${src}
+                    ${originalFileSize}
+                    ${downloadFile}
+                    ${commandsStart + commands + commandsEnd}
+                </ul>
+                ${errorReport}
+            </div>
+        `
+
+    }
+
 </script>
 </body>
 </html>
