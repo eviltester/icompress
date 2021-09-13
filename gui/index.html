@@ -21,7 +21,8 @@
     <!-- TODO: (Compress image to folder) button, choose input file and output folder, then have an 'replace original' button next to output files to copy compressed files-->
     <div>
         <p><button id="chooseFileToCompress">Choose</button><label for="inputfile">File To compress:</label><span id='inputfile'></span></p>
-        <img id="fileToCompress" width="200px" height="auto" style="display:none" />
+        <img id="fileToCompress" style="float:left" width="200px" height="auto" style="display:none" />
+        <img id="compressedFile" style="float:right" width="200px" height="auto" style="display:none" />
     </div>
     <div>
         <p><button id="chooseOutputFolder">Choose</button><label for="outputfolder">Output Folder:</label><span id='outputfolder' ></span></p>
@@ -34,7 +35,7 @@
     <div id="imagedetails"></div>
     <pre id="imageresponse"></pre>
     <p id="messageresponse"></p>
-
+    <div id="imageGrid" class="ag-theme-alpine" style="height: 300px; width:100%;"></div>
     <div id="logGrid" class="ag-theme-alpine" style="height: 300px; width:100%;"></div>
 
 </div>
@@ -45,7 +46,7 @@
         const agGrid = require( 'ag-grid-community');
 
         // specify the columns for the log
-        const columnDefs = [
+        const logColumnDefs = [
         { field: "timestamp", suppressSizeToFit: true },
         { field: "message", wrapText:true }
         ];
@@ -53,7 +54,7 @@
         // let the grid know which columns and what data to use
         const logGridOptions = {
             getRowNodeId: (data) => data.timestamp,
-            columnDefs: columnDefs,
+            columnDefs: logColumnDefs,
             defaultColDef: {resizable: true, sortable:true, filter:"agTextColumnFilter"},
             rowData: [],
 
@@ -66,6 +67,34 @@
         // create the grid passing in the div to use together with the columns & data we want to use
         new agGrid.Grid(eGridDiv, logGridOptions);
 
+
+        // todo: create a grid to render the main image compression results (initially without the images)
+        const imageColumnDefs = [
+            { field: "fileName"},
+            { field: "status"},
+            { field: "outputSize" },
+            { field: "compression"},
+            { field: "outputFile"},
+            { field: "command"},
+        ];
+
+        const imageGridOptions = {
+            columnDefs: imageColumnDefs,
+            defaultColDef: {resizable: true, sortable:true, filter:"agTextColumnFilter"},
+            rowData: [],
+            onRowClicked: (event) => {
+                const compressedImageView = document.getElementById("compressedFile");
+                compressedImageView.src = event.data.outputFile;
+                compressedImageView.setStyle="display";
+            }
+
+        };
+
+
+        const imageGridDiv = document.querySelector('#imageGrid');
+        new agGrid.Grid(imageGridDiv, imageGridOptions);
+
+        // rest of electron app
 
         const {ipcRenderer, shell} = require( 'electron' );
 
@@ -126,9 +155,9 @@
 
     ipcRenderer.on('image-update', (event, anImage)=>{
         console.log("on image update");
-        const imageArea = document.getElementById("imageresponse");
+        //const imageArea = document.getElementById("imageresponse");
         console.log(anImage);
-        imageArea.innerText = JSON.stringify(anImage, null, 2);
+        //imageArea.innerText = JSON.stringify(anImage, null, 2);
         document.getElementById("imagedetails").innerHTML=imageUpdateHTML(anImage);
     })
 
@@ -154,70 +183,89 @@
         shell.showItemInFolder(aPath);
     }
 
-    function imageUpdateHTML(anImage){
+    function imageUpdateHTML(anImage) {
+
 
         let src = "";
-        if(anImage.src){
-            if(anImage.src.startsWith("local")){
+        if (anImage.src) {
+            if (anImage.src.startsWith("local")) {
                 src = `<li>Local File: <a href='file://${anImage.fullFilePath}' target="_blank">${anImage.fileName}</a></li>`
-            }else{
+            } else {
                 src = `<li>Web Image: <a href='${anImage.src}' target="_blank">${anImage.src}</a></li>`
             }
         }
-        let originalFileSize="";
-        if(anImage.contentLength){
+        let originalFileSize = "";
+        if (anImage.contentLength) {
             originalFileSize = `<li>Original File Size: ${anImage.contentLength}`;
         }
-        let downloadFile="";
-        if(anImage.fullFilePath){
-            downloadFile=`<li>Downloaded File:
+        let downloadFile = "";
+        if (anImage.fullFilePath) {
+            downloadFile = `<li>Downloaded File:
                             <button onClick="openFolder('${anImage.fullFilePath}')">Open At</button>
                             <a href='${anImage.fullFilePath}' target="_blank">${anImage.fullFilePath}</a>
                            </li>`;
         }
         let errorReport = "";
-        if(anImage.errorReport){
-            errorReport=`<div><pre>${anImage.errorReport}</pre></div>`;
+        if (anImage.errorReport) {
+            errorReport = `<div><pre>${anImage.errorReport}</pre></div>`;
         }
         let commandsStart = anImage.commands ? "<ul>" : "";
         let commandsEnd = anImage.commands ? "</ul>" : "";
         let commands = "";
 
         // todo: order by outputfilesize
-        for(const command of anImage.commands){
-            let outputFileNameRender = "";
-            if(command.details.status!="DELETED"){
-                outputFileNameRender = `
-                    <button onClick="openFolder('${command.details.outputFileName}')">Open At</button>
-                    <br/>
-                    <a href="${command.details.outputFileName}" target="_blank">${command.details.outputFileName}</a>
-                    <br/>
-                    <img src='${command.details.outputFileName}' width:'200px' height:"auto"/>
-                    `;
-            }else{
-                outputFileNameRender = `${command.details.outputFileName}`;
+        for (const command of anImage.commands) {
+
+            const filenameParts = command.details.outputFileName.split("/");
+            const imageData = {
+                fileName: filenameParts[filenameParts.length - 1],
+                status: command.details.status,
+                outputSize: command.details.outputFileSize,
+                compression: ((command.details.outputFileSize / anImage.contentLength) * 100).toFixed(2),
+                command: command.command,
+                outputFile: command.details.outputFileName
             }
-            commands = commands +
-                `<li><pre>${command.command}</pre></li>
-                 <li>${outputFileNameRender}</li>
-                 <li>Output Size: ${command.details.outputFileSize}</li>
-                 <li>Compressed To % : ${(command.details.outputFileSize / anImage.contentLength)*100}</li>
-                 <li>Stats: ${command.details.status}</li>
-                `
+
+            imageGridOptions.api.applyTransactionAsync({
+                add: [
+                    imageData
+                ]
+            });
+
+            //     let outputFileNameRender = "";
+            //     if(command.details.status!="DELETED"){
+            //         outputFileNameRender = `
+            //             <button onClick="openFolder('${command.details.outputFileName}')">Open At</button>
+            //             <br/>
+            //             <a href="${command.details.outputFileName}" target="_blank">${command.details.outputFileName}</a>
+            //             <br/>
+            //             <img src='${command.details.outputFileName}' width:'200px' height:"auto"/>
+            //             `;
+            //     }else{
+            //         outputFileNameRender = `${command.details.outputFileName}`;
+            //     }
+            //     commands = commands +
+            //         `<li><pre>${command.command}</pre></li>
+            //          <li>${outputFileNameRender}</li>
+            //          <li>Output Size: ${command.details.outputFileSize}</li>
+            //          <li>Compressed To % : ${(command.details.outputFileSize / anImage.contentLength)*100}</li>
+            //          <li>Stats: ${command.details.status}</li>
+            //         `
+            // }
+            //
+            // return `
+            //     <div class="image-report">
+            //         <ul>
+            //             ${src}
+            //             ${originalFileSize}
+            //             ${downloadFile}
+            //             ${commandsStart + commands + commandsEnd}
+            //         </ul>
+            //         ${errorReport}
+            //     </div>
+            // `
+
         }
-
-        return `
-            <div class="image-report">
-                <ul>
-                    ${src}
-                    ${originalFileSize}
-                    ${downloadFile}
-                    ${commandsStart + commands + commandsEnd}
-                </ul>
-                ${errorReport}
-            </div>
-        `
-
     }
 
 </script>
