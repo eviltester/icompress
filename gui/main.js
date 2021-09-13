@@ -47,7 +47,7 @@ app.whenReady().then(() => {
 function generalProgress(event){
     let message = event;
     if(event.constructor.name === "Event"){
-        message = event.message;
+        message = event;
     }else {
         if (typeof message === "object") {
             message = JSON.stringify(event);

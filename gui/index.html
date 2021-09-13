@@ -10,6 +10,10 @@
 
     <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>iCompress Images</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css">
+
 </head>
 <body>
 <h1>iCompress</h1>
@@ -30,11 +34,40 @@
     <div id="imagedetails"></div>
     <pre id="imageresponse"></pre>
     <p id="messageresponse"></p>
+
+    <div id="logGrid" class="ag-theme-alpine" style="height: 300px; width:100%;"></div>
+
 </div>
 
 
 <script>
-    const {ipcRenderer, shell} = require( 'electron' );
+
+        const agGrid = require( 'ag-grid-community');
+
+        // specify the columns for the log
+        const columnDefs = [
+        { field: "timestamp", suppressSizeToFit: true },
+        { field: "message", wrapText:true }
+        ];
+
+        // let the grid know which columns and what data to use
+        const logGridOptions = {
+            getRowNodeId: (data) => data.timestamp,
+            columnDefs: columnDefs,
+            defaultColDef: {resizable: true, sortable:true, filter:"agTextColumnFilter"},
+            rowData: [],
+
+            onGridReady: event => {event.api.sizeColumnsToFit()}
+        };
+
+        // lookup the container we want the Grid to use
+        const eGridDiv = document.querySelector('#logGrid');
+
+        // create the grid passing in the div to use together with the columns & data we want to use
+        new agGrid.Grid(eGridDiv, logGridOptions);
+
+
+        const {ipcRenderer, shell} = require( 'electron' );
 
     document.getElementById( 'chooseFileToCompress' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-input-file');
@@ -80,8 +113,15 @@
 
     ipcRenderer.on('general-update', (event, message)=>{
         const textArea = document.getElementById("messageresponse");
-        console.log(message);
-        textArea.innerText = message + "\n" + textArea.innerText;
+        //console.log(message.msg);
+        //textArea.innerText = message.msg + "\n" + textArea.innerText;
+        if(message.msg && message.msg.trim()!="") {
+            logGridOptions.api.applyTransactionAsync({
+                add: [
+                    {timestamp: message.timestamp, message: message.msg}
+                ]
+            });
+        }
     })
 
     ipcRenderer.on('image-update', (event, anImage)=>{

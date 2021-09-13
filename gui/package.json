@@ -23,5 +23,8 @@
   "homepage": "https://github.com/eviltester/icompress#readme",
   "devDependencies": {
     "electron": "^14.0.0"
+  },
+  "dependencies": {
+    "ag-grid-community": "^26.0.0"
   }
 }
