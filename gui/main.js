@@ -45,16 +45,20 @@ app.whenReady().then(() => {
 
 
 function generalProgress(event){
-    let message = event;
-    if(event.constructor.name === "Event"){
-        message = event;
-    }else {
-        if (typeof message === "object") {
-            message = JSON.stringify(event);
+    new Promise((resolve, reject) =>{
+        let message = event;
+        if(event.constructor.name === "Event"){
+            message = event;
+        }else {
+            if (typeof message === "object") {
+                message = JSON.stringify(event);
+            }
         }
-    }
-    win.webContents.send('general-update', message);
+        win.webContents.send('general-update', message);
+        resolve(message);
+    }).catch((error)=>{console.log("general progress update error"); console.log(event);})
 }
+
 function imageUpdate(anImage){
     console.log(anImage);
     // cannot send objects with functions so convert to a generic object first

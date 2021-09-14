@@ -69,7 +69,11 @@ class EventsRegister{
 
     alertListeners(event){
         for(const callbackName of Object.getOwnPropertyNames(this.listeners)){
-            this.listeners[callbackName](event);
+            new Promise((resolve, reject)=>{
+                this.listeners[callbackName](event);
+                resolve(event);
+                }
+            ).catch((error)=>{console.log("alert Failed");console.log(error)});
         }
     }
 

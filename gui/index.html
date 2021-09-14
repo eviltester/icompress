@@ -72,8 +72,12 @@
         const imageColumnDefs = [
             { field: "fileName"},
             { field: "status"},
-            { field: "outputSize" },
-            { field: "compression"},
+            { field: "outputSize", headerName: "bytes",
+                comparator: (valueA, valueB, nodeA, nodeB, isInverted) => valueA - valueB
+            },
+            { field: "compression",  headerName: "% of",
+                comparator: (valueA, valueB, nodeA, nodeB, isInverted) => valueA - valueB
+            },
             { field: "outputFile"},
             { field: "command"},
         ];
@@ -110,6 +114,7 @@
             alert("You must choose an input file to compress");
             return;
         }
+        logGridOptions.api.setRowData([]);
         ipcRenderer.invoke('app:compress-images-insitu', inputFileName).then(
             (result) => {
                 //document.getElementById("messageresponse").innerText = result;
@@ -132,6 +137,7 @@
             return;
         }
 
+        logGridOptions.setRowData([]);
         ipcRenderer.invoke('app:compress-images-to', inputFileName, outputFolder).then(
             (result) => {
                 //document.getElementById("messageresponse").innerText = result;
@@ -213,6 +219,8 @@
         let commandsEnd = anImage.commands ? "</ul>" : "";
         let commands = "";
 
+        imageGridOptions.api.setRowData();
+
         // todo: order by outputfilesize
         for (const command of anImage.commands) {
 
@@ -266,6 +274,8 @@
             // `
 
         }
+
+        imageGridOptions.columnApi.autoSizeAllColumns();
     }
 
 </script>
