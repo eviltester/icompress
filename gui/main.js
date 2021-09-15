@@ -13,7 +13,7 @@ const FS = require('fs');
 
 const Events = require("../bin/Events.js");
 const events = new Events.Register();
-events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 
 function createWindow () {
     win = new BrowserWindow({
@@ -23,7 +23,7 @@ function createWindow () {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true,
             enableRemoteModule: true,
-            contextIsolation: false
+            contextIsolation: false,
         }
     })
 
@@ -44,23 +44,42 @@ app.whenReady().then(() => {
 
 
 
+// let messages = [];
+// let messageSender;
+
 function generalProgress(event){
-    new Promise((resolve, reject) =>{
+
+    //clearTimeout(messageSender);
+
         let message = event;
         if(event.constructor.name === "Event"){
             message = event;
         }else {
+            if(event.constructor.name === "String"){
+                message = Events.newLogEvent(event)
+            }
             if (typeof message === "object") {
-                message = JSON.stringify(event);
+                if(message.type && message.type==="log"){
+                    message = event;
+                }else {
+                    message = Events.newLogEvent(JSON.stringify(event)).setObject(event);
+                }
             }
         }
-        win.webContents.send('general-update', message);
-        resolve(message);
-    }).catch((error)=>{console.log("general progress update error"); console.log(event);})
+      //  messages.push(message);
+
+      //  if(messages.length>5) {
+            win.webContents.send('general-update', [message]);
+//            messages = [];
+     //   }
+
+    // messageSender = setTimeout(()=>{
+    //     win.webContents.send('general-update', messages)
+    // }, 500);
 }
 
 function imageUpdate(anImage){
-    console.log(anImage);
+    //console.log(anImage);
     // cannot send objects with functions so convert to a generic object first
     win.webContents.send('image-update', JSON.parse(JSON.stringify(anImage)));
 }
@@ -91,11 +110,12 @@ ipcMain.handle('app:compress-choose-output-folder', async (event) => {
     }).catch((err)=>{})
 })
 
+// https://nodejs.org/docs/latest-v10.x/api/worker_threads.html
+const { Worker } = require('worker_threads')
+
 ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 
-    generalProgress("compressing in situ: " + inputFile);
-
-    return new Promise((resolve, reject)=>{
+        generalProgress("compressing in situ: " + inputFile);
 
         if (!inputFile || inputFile.trim().length==0) {
             throw "Require an input file to compress";
@@ -105,41 +125,62 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
             throw "Could not find input file " + inputFile;
         }
 
-            const parsed = path.parse(inputFile);
-            const fileName = parsed.base;
-            const dir = parsed.dir;
 
-            const inputImage = new ImageDetails.Image();
-            inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
-            inputImage.setFullFilePath(inputFile);
-            inputImage.setOriginalFileName(fileName);
-            inputImage.setState(ImageStates.READY_TO_COMPRESS);
+            const workerData = { inputFile: inputFile };
+            const worker = new Worker('./compress-worker.js', {workerData} );
+            worker.on('message', (message)=>{
+                if(message.progress){
+                    generalProgress(message.progress);
+                }
+                if(message.imageUpdate){
+                    imageUpdate(message.imageUpdate)
+                }
+                if(message.done){
+                    generalProgress(message.done)
+                }
+                if(message.error){
+                    generalProgress(message.error.error)
+                }
+            });
+            worker.on('error', (error)=>{generalProgress(error)});
+            worker.on('exit', (code) => {
+                if (code !== 0)
+                    generalProgress(`Worker stopped with exit code ${code}`);
+            })
 
-            const stats = FS.statSync(inputFile);
-            inputImage.setContentLength(stats.size);
-
-            // imageQManager.addImageToCompressQueue(inputImage);
-            // but...since this is a single file, we can just await the compression code
-            (async () => {
-                generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-                anImage = await Compress.compress(inputImage, true, true);
-                generalProgress('compressed ' + fileName);
-                //process.exit(0);
-                imageUpdate(anImage);
-            })();
-
-            resolve("Compressed " + inputFile);
-
-    }).catch((error) => {reject(error)})
+            // const parsed = path.parse(inputFile);
+            // const fileName = parsed.base;
+            // const dir = parsed.dir;
+            //
+            // const inputImage = new ImageDetails.Image();
+            // inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
+            // inputImage.setFullFilePath(inputFile);
+            // inputImage.setOriginalFileName(fileName);
+            // inputImage.setState(ImageStates.READY_TO_COMPRESS);
+            //
+            // const stats = FS.statSync(inputFile);
+            // inputImage.setContentLength(stats.size);
+            //
+            // // imageQManager.addImageToCompressQueue(inputImage);
+            // // but...since this is a single file, we can just await the compression code
+            // generalProgress('about to compress single file ' + inputImage.getFullFilePath());
+            // Compress.compress(inputImage, true, true).
+            // then((image)=>{
+            //     generalProgress('compressed ' + fileName);
+            //     //process.exit(0);
+            //     imageUpdate(image);
+            //     resolve("Compressed " + inputFile);
+            // }).catch((error)=>{reject(error)})
 
 })
 
 ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) => {
 
-    generalProgress("compressing: " + inputFile);
-    generalProgress("outputFolder: " + outputFolder);
 
     return new Promise((resolve, reject)=>{
+
+        generalProgress("compressing: " + inputFile);
+        generalProgress("outputFolder: " + outputFolder);
 
         if (!inputFile || inputFile.trim().length==0) {
             throw "Require an input file to compress";
@@ -177,6 +218,6 @@ ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) 
 
         resolve("Compressed " + inputFile);
 
-    }).catch((error) => {reject(error)})
+    });
 
 })

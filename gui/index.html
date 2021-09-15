@@ -101,10 +101,15 @@
         // rest of electron app
 
         const {ipcRenderer, shell} = require( 'electron' );
-
+        //const ipcRenderer=undefined;
+        //const worker = new Worker('compress-web-worker.js');
     document.getElementById( 'chooseFileToCompress' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-input-file');
     }
+    // document.getElementById( 'chooseFileToCompress' ).onclick = function() {
+    //     worker.postMessage({'cmd': 'chooseFileToCompress'})
+    // }
+
     document.getElementById( 'chooseOutputFolder' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-output-folder');
     }
@@ -121,6 +126,7 @@
             }).catch((error) => {
                 document.getElementById("errorMessage").innerText = error;
         });
+        console.log("compress in situ started");
     };
 
     document.getElementById( 'compresssinglefileTo' ).onclick = function() {
@@ -137,7 +143,7 @@
             return;
         }
 
-        logGridOptions.setRowData([]);
+        logGridOptions.api.setRowData([]);
         ipcRenderer.invoke('app:compress-images-to', inputFileName, outputFolder).then(
             (result) => {
                 //document.getElementById("messageresponse").innerText = result;
@@ -146,15 +152,34 @@
         });
     };
 
-    ipcRenderer.on('general-update', (event, message)=>{
-        const textArea = document.getElementById("messageresponse");
-        //console.log(message.msg);
+    ipcRenderer.on('general-update', (event, messages)=>{
+        //const textArea = document.getElementById("messageresponse");
+        console.log(messages);
         //textArea.innerText = message.msg + "\n" + textArea.innerText;
-        if(message.msg && message.msg.trim()!="") {
+        let log = [];
+        if(messages instanceof Array){
+            for(message of messages){
+                if(message.msg && message.msg.trim()!="") {
+                    log.push({timestamp: message.timestamp, message: message.msg})
+                }else{
+                    if(!messages.msg) {
+                        log.push({timestamp: Date.now(), message: JSON.stringify(messages)})
+                    }
+                }
+            }
+        }else{
+            if(messages.msg && messages.msg.trim()!="") {
+                log.push({timestamp: message.timestamp, message: message.msg})
+            }else{
+                if(!messages.msg) {
+                    log.push({timestamp: Date.now(), message: JSON.stringify(messages)})
+                }
+            }
+        }
+
+        if(log.length>0){
             logGridOptions.api.applyTransactionAsync({
-                add: [
-                    {timestamp: message.timestamp, message: message.msg}
-                ]
+                add: log
             });
         }
     })
