@@ -25,8 +25,8 @@ Compress.events.registerListener("general-update", generalProgress);
 
 
 
-function compressInSitu(anIinputFile) {
-    const inputFile = workerData.inputFile;
+function compressInSitu(anInputFile) {
+    const inputFile =anInputFile;
 
     const parsed = path.parse(inputFile);
     const fileName = parsed.base;

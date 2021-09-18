@@ -47,6 +47,8 @@ app.whenReady().then(() => {
 // let messages = [];
 // let messageSender;
 
+// TODO: this is unduly messy - tidy it up
+// TODO: fix the rogue 'log' messages that are sent with no msg
 function generalProgress(event){
 
     //clearTimeout(messageSender);
@@ -130,7 +132,7 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
         compressionWorker(inputFile).
         then(()=>{resolve("compressed " + inputFile)}).
         catch((error)=>{reject(error)});
-        
+
     });
 
 })
@@ -138,8 +140,7 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 function compressionWorker(inputFile, outputFolder){
 
     return new Promise((resolve, reject)=>{
-        const workerData = {inputFile: inputFile};
-        const worker = new Worker('./compress-worker.js', {workerData});
+        const worker = new Worker('./compress-worker.js');
         worker.on('message', (message) => {
             if (message.progress) {
                 generalProgress(message.progress);
