@@ -20,15 +20,29 @@
 <div>
     <!-- TODO: (Compress image to folder) button, choose input file and output folder, then have an 'replace original' button next to output files to copy compressed files-->
     <div>
+        <h1>Compression Configuration</h1>
         <p><button id="chooseFileToCompress">Choose</button><label for="inputfile">File To compress:</label><span id='inputfile'></span></p>
         <img id="fileToCompress" style="float:left" width="200px" height="auto" style="display:none" />
-        <img id="compressedFile" style="float:right" width="200px" height="auto" style="display:none" />
+
     </div>
+
     <div>
         <p><button id="chooseOutputFolder">Choose</button><label for="outputfolder">Output Folder:</label><span id='outputfolder' ></span></p>
     </div>
     <button id="compresssinglefile">Compress Image In Current Folder</button>
     <button id="compresssinglefileTo">Compress Image To Output Folder</button>
+
+    <div id="compressedImageDetails" style="display:none">
+        <h2>Compressed Image</h2>
+        <a id="compressedFileAtLink" target="_blank">
+            <img id="compressedFile"  width="200px" height="auto"/>
+        </a>
+        <p><a id="compressedFileNameLink" target="_blank"></a></p>
+        <p>Compressed File Size: <span id="compressedFileSize"></span></p>
+        <p>Compression %: <span id="compressedFilePercentage"></span></p>
+        <button onClick="openFolder(document.getElementById('compressedFile').src)">Open At</button>
+    </div>
+
 </div>
 <div>
     <div id="errorMessage"></div>
@@ -67,8 +81,29 @@
         // create the grid passing in the div to use together with the columns & data we want to use
         new agGrid.Grid(eGridDiv, logGridOptions);
 
+        const showCompressedImageDetails = (compressedImagePath, compressedImageSize,
+                                            compressedFilePercentage, fileName
+            ) =>{
+            const compressedImageContainer = document.getElementById("compressedImageDetails");
+            compressedImageContainer.style.display="block";
+            const compressedImageView = document.getElementById("compressedFile");
+            compressedImageView.src = compressedImagePath;
+            const compressedFileAtLink = document.getElementById("compressedFileAtLink");
+            compressedFileAtLink.href = compressedImagePath;
 
-        // todo: create a grid to render the main image compression results (initially without the images)
+
+            fileSize = document.getElementById("compressedFileSize")
+            fileSize.innerText = compressedImageSize;
+
+            percentage = document.getElementById("compressedFilePercentage")
+            percentage.innerText = compressedFilePercentage;
+
+            fileNameA = document.getElementById("compressedFileNameLink")
+            fileNameA.href= compressedImagePath;
+            fileNameA.innerText = fileName;
+
+        }
+
         const imageColumnDefs = [
             { field: "fileName"},
             { field: "status"},
@@ -87,9 +122,10 @@
             defaultColDef: {resizable: true, sortable:true, filter:"agTextColumnFilter"},
             rowData: [],
             onRowClicked: (event) => {
-                const compressedImageView = document.getElementById("compressedFile");
-                compressedImageView.src = event.data.outputFile;
-                compressedImageView.setStyle="display";
+                showCompressedImageDetails( event.data.outputFile,
+                                            event.data.outputSize,
+                                            event.data.compression,
+                                            event.data.fileName);
             }
 
         };
@@ -211,6 +247,9 @@
     })
 
     function openFolder(aPath){
+        if(aPath.startsWith("file://")){
+            aPath=aPath.replace("file://","");
+        }
         shell.showItemInFolder(aPath);
     }
 
