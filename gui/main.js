@@ -115,64 +115,71 @@ const { Worker } = require('worker_threads')
 
 ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 
+    return new Promise((resolve, reject)=> {
+
         generalProgress("compressing in situ: " + inputFile);
 
-        if (!inputFile || inputFile.trim().length==0) {
-            throw "Require an input file to compress";
+        if (!inputFile || inputFile.trim().length == 0) {
+            reject("Require an input file to compress");
         }
 
-        if(!FS.existsSync(inputFile)){
-            throw "Could not find input file " + inputFile;
+        if (!FS.existsSync(inputFile)) {
+            reject("Could not find input file " + inputFile);
         }
 
-
-            const workerData = { inputFile: inputFile };
-            const worker = new Worker('./compress-worker.js', {workerData} );
-            worker.on('message', (message)=>{
-                if(message.progress){
-                    generalProgress(message.progress);
-                }
-                if(message.imageUpdate){
-                    imageUpdate(message.imageUpdate)
-                }
-                if(message.done){
-                    generalProgress(message.done)
-                }
-                if(message.error){
-                    generalProgress(message.error.error)
-                }
-            });
-            worker.on('error', (error)=>{generalProgress(error)});
-            worker.on('exit', (code) => {
-                if (code !== 0)
-                    generalProgress(`Worker stopped with exit code ${code}`);
-            })
-
-            // const parsed = path.parse(inputFile);
-            // const fileName = parsed.base;
-            // const dir = parsed.dir;
-            //
-            // const inputImage = new ImageDetails.Image();
-            // inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
-            // inputImage.setFullFilePath(inputFile);
-            // inputImage.setOriginalFileName(fileName);
-            // inputImage.setState(ImageStates.READY_TO_COMPRESS);
-            //
-            // const stats = FS.statSync(inputFile);
-            // inputImage.setContentLength(stats.size);
-            //
-            // // imageQManager.addImageToCompressQueue(inputImage);
-            // // but...since this is a single file, we can just await the compression code
-            // generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-            // Compress.compress(inputImage, true, true).
-            // then((image)=>{
-            //     generalProgress('compressed ' + fileName);
-            //     //process.exit(0);
-            //     imageUpdate(image);
-            //     resolve("Compressed " + inputFile);
-            // }).catch((error)=>{reject(error)})
+        compressionWorker(inputFile).
+        then(()=>{resolve("compressed " + inputFile)}).
+        catch((error)=>{reject(error)});
+        
+    });
 
 })
+
+function compressionWorker(inputFile, outputFolder){
+
+    return new Promise((resolve, reject)=>{
+        const workerData = {inputFile: inputFile};
+        const worker = new Worker('./compress-worker.js', {workerData});
+        worker.on('message', (message) => {
+            if (message.progress) {
+                generalProgress(message.progress);
+            }
+            if (message.imageUpdate) {
+                imageUpdate(message.imageUpdate)
+            }
+            if (message.done) {
+                generalProgress(message.done)
+                worker.postMessage({action: "exit"})
+            }
+            if (message.exit) {
+                generalProgress("closed compression thread");
+                resolve();
+            }
+            if (message.error) {
+                generalProgress(message.error.error)
+                worker.postMessage({action: "exit"})
+            }
+        });
+        worker.on('error', (error) => {
+            generalProgress(error)
+            reject(error);
+        });
+        worker.on('exit', (code) => {
+            if (code !== 0) {
+                generalProgress(`Worker stopped with exit code ${code}`);
+                reject("unexpected exit");
+            }
+        })
+
+        if(outputFolder===undefined || outputFolder===null) {
+            worker.postMessage({action: "compressInSitu", inputFile: inputFile});
+        }else{
+            worker.postMessage({action: "compressTo",
+                                inputFile: inputFile,
+                                outputFolder: outputFolder});
+        }
+    })
+}
 
 ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) => {
 
@@ -183,40 +190,20 @@ ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) 
         generalProgress("outputFolder: " + outputFolder);
 
         if (!inputFile || inputFile.trim().length==0) {
-            throw "Require an input file to compress";
+            reject( "Require an input file to compress");
         }
 
         if(!FS.existsSync(inputFile)){
-            throw "Could not find input file " + inputFile;
+            reject("Could not find input file " + inputFile);
         }
 
         if (!outputFolder || outputFolder.trim().length==0) {
-            throw "Require an output file to save to";
+            reject("Require an output file to save to");
         }
 
-        const parsed = path.parse(inputFile);
-        const fileName = parsed.base;
-        const dir = parsed.dir;
-
-        const inputImage = new ImageDetails.Image();
-        inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
-        inputImage.setFullFilePath(inputFile);
-        inputImage.setOriginalFileName(fileName);
-        inputImage.setState(ImageStates.READY_TO_COMPRESS);
-
-        const stats = FS.statSync(inputFile);
-        inputImage.setContentLength(stats.size);
-
-        // imageQManager.addImageToCompressQueue(inputImage);
-        // but...since this is a single file, we can just await the compression code
-        (async () => {
-            generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-            anImage = await Compress.compressTo(inputImage, outputFolder, true, true);
-            generalProgress('compressed ' + fileName);
-            imageUpdate(anImage);
-        })();
-
-        resolve("Compressed " + inputFile);
+        compressionWorker(inputFile, outputFolder).
+        then(()=>{resolve("compressed " + inputFile + " to " + outputFolder)}).
+        catch((error)=>{reject(error)});
 
     });
 

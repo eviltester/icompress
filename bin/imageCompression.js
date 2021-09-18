@@ -80,43 +80,8 @@ function compress(imageToCompress, forceCompressFfmpeg, forceCompressImageMagick
     const writtenImagePath = Path.parse(imageToCompress.getFullFilePath());
     const pathPrefix = ""; // "./";
 
-    // possibly use Path.relative() with "./" or preocess.cwd()
-    // const inputFileName = pathPrefix + imageToCompress.getFullFilePath();
-    // const ffmpegOutputFileName = pathPrefix + writtenImagePath.dir + Path.sep + "ffmpeged-" + writtenImagePath.base;
-    // const compressedFileName = pathPrefix +  writtenImagePath.dir + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
-
     return compressTo(imageToCompress, pathPrefix + writtenImagePath.dir, forceCompressFfmpeg, forceCompressImageMagick);
 
-    // events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
-    //
-    // if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
-    //
-    //     return new Promise((resolve, reject)=> {
-    //         ffmpegCompress(imageToCompress, inputFileName, ffmpegOutputFileName, forceCompressFfmpeg)
-    //             .then((image) => {
-    //                 imageMagickCompress(imageToCompress, ffmpegOutputFileName, compressedFileName, forceCompressImageMagick)
-    //                     .then((image) => {
-    //                         resolve(image);
-    //                     })
-    //                     .catch((image) => {
-    //                         reject(image);
-    //                     });
-    //             })
-    //             .catch((image) => {
-    //                 reject(image);
-    //             });
-    //     });
-    //
-    // }else{
-    //     // just apply image magic
-    //     return new Promise((resolve, reject)=> {
-    //         imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
-    //             resolve(image);
-    //         }).catch((image) => {
-    //             reject(image)
-    //         });
-    //     });
-    // }
 }
 
 function compressTo(imageToCompress, outputFilePath, forceCompressFfmpeg, forceCompressImageMagick){
