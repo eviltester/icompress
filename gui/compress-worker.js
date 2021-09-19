@@ -23,38 +23,8 @@ function imageUpdate(image){
 Compress.events.registerListener("general-update", generalProgress);
 
 
-
-
 function compressInSitu(anInputFile) {
-    const inputFile =anInputFile;
-
-    const parsed = path.parse(inputFile);
-    const fileName = parsed.base;
-    const dir = parsed.dir;
-
-    const inputImage = new ImageDetails.Image();
-    inputImage.setSrc(Persist.combineIntoPath("local" + inputFile));
-    inputImage.setFullFilePath(inputFile);
-    inputImage.setOriginalFileName(fileName);
-    inputImage.setState(ImageStates.READY_TO_COMPRESS);
-
-    const stats = FS.statSync(inputFile);
-    inputImage.setContentLength(stats.size);
-
-    // imageQManager.addImageToCompressQueue(inputImage);
-    // but...since this is a single file, we can just await the compression code
-
-    generalProgress('about to compress single file ' + inputImage.getFullFilePath());
-    Compress.compress(inputImage, true, true).
-    then((image) => {
-        generalProgress('compressed ' + fileName);
-        //process.exit(0);
-        imageUpdate(image);
-        parentPort.postMessage({done: "Compressed " + inputFile})
-        //resolve("Compressed " + inputFile);
-    }).catch((error) => {
-        parentPort.postMessage({error: error})
-    })
+    return compressToFolder(anInputFile, undefined);
 }
 
 function compressToFolder(inputFile, outputFolder){
