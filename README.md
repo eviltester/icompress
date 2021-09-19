@@ -9,7 +9,7 @@ npm install -g .
 uninstall
 
 ```
-npm uninstall -g image-compressor
+npm uninstall -g web-image-utils
 ```
 
-run as `icompress -i filename`
+run as `wiutils -i filename`

@@ -51,7 +51,9 @@ function execParas(commandLineTemplate, params) {
 
             execPromise(commandLine).
             then((result)=>{
-                    events.alertListeners(Events.newLogEvent(result));
+                    if(result!= undefined && result!=null && result.length>0) {
+                        events.alertListeners(Events.newLogEvent(result));
+                    }
                     resolve(result)})
                 .catch((error)=>{
                     events.alertListeners(

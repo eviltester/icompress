@@ -1,5 +1,5 @@
 {
-  "name": "image-compressor",
+  "name": "web-image-utils",
   "version": "1.0.0",
   "description": "",
   "main": "bin/index.js",
@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "bin": {
-    "icompress": "./bin/index.js"
+    "wiutils": "./bin/index.js"
   },
   "dependencies": {
     "animated-gif-detector": "^1.2.0",

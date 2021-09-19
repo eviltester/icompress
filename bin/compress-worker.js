@@ -3,10 +3,10 @@
 const { workerData, parentPort } = require('worker_threads')
 const path = require('path')
 
-const ImageDetails = require("../bin/imageDetails.js");
+const ImageDetails = require("./imageDetails");
 const ImageStates = ImageDetails.States;
-const Compress = require("../bin/imageCompression");
-const Persist = require("../bin/imagePersistence");
+const Compress = require("./imageCompression");
+const Persist = require("./imagePersistence");
 const FS = require('fs');
 
 // You can do any heavy stuff here, in a synchronous way

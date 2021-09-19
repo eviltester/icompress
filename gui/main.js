@@ -59,12 +59,13 @@ function generalProgress(event){
         }else {
             if(event.constructor.name === "String"){
                 message = Events.newLogEvent(event)
-            }
-            if (typeof message === "object") {
-                if(message.type && message.type==="log"){
-                    message = event;
-                }else {
-                    message = Events.newLogEvent(JSON.stringify(event)).setObject(event);
+            }else {
+                if (typeof message === "object") {
+                    if (message.type && message.type === "log") {
+                        message = event;
+                    } else {
+                        message = Events.newLogEvent(JSON.stringify(event)).setObject(event);
+                    }
                 }
             }
         }
@@ -140,7 +141,7 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 function compressionWorker(inputFile, outputFolder){
 
     return new Promise((resolve, reject)=>{
-        const worker = new Worker('./compress-worker.js');
+        const worker = new Worker('../bin/compress-worker.js');
         worker.on('message', (message) => {
             if (message.progress) {
                 generalProgress(message.progress);
