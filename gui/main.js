@@ -44,14 +44,13 @@ app.whenReady().then(() => {
 
 
 
-// let messages = [];
-// let messageSender;
+// message queue to try to make GUI more responsive
+let messages = [];
+let messageSender;
 
-// TODO: this is unduly messy - tidy it up
-// TODO: fix the rogue 'log' messages that are sent with no msg
 function generalProgress(event){
 
-    //clearTimeout(messageSender);
+    clearTimeout(messageSender);
 
         let message = event;
         if(event.constructor.name === "Event"){
@@ -69,16 +68,19 @@ function generalProgress(event){
                 }
             }
         }
-      //  messages.push(message);
+      messages.push(message);
 
-      //  if(messages.length>5) {
-            win.webContents.send('general-update', [message]);
-//            messages = [];
-     //   }
+      if(messages.length>5) {
+            win.webContents.send('general-update', messages);
+            messages = [];
+      }
 
-    // messageSender = setTimeout(()=>{
-    //     win.webContents.send('general-update', messages)
-    // }, 500);
+    messageSender = setTimeout(()=>{
+        if(messages.length>0) {
+            win.webContents.send('general-update', messages)
+            messages=[];
+        }
+    }, 500);
 }
 
 function imageUpdate(anImage){
@@ -122,12 +124,10 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 
         generalProgress("compressing in situ: " + inputFile);
 
-        if (!inputFile || inputFile.trim().length == 0) {
-            reject("Require an input file to compress");
-        }
+        validationError = validateInputFile(inputFile);
 
-        if (!FS.existsSync(inputFile)) {
-            reject("Could not find input file " + inputFile);
+        if(validationError){
+            reject(validationError)
         }
 
         compressionWorker(inputFile).
@@ -137,6 +137,24 @@ ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
     });
 
 })
+
+// returns error message if fail validation
+function validateInputFile(inputFile){
+
+    try {
+        if (!inputFile || inputFile.trim().length == 0) {
+            return ("Require an input file to compress");
+        }
+
+        if (!FS.existsSync(inputFile)) {
+            return ("Could not find input file " + inputFile);
+        }
+    }catch(error){
+        return error;
+    }
+
+    return undefined;
+}
 
 function compressionWorker(inputFile, outputFolder){
 
@@ -191,12 +209,10 @@ ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) 
         generalProgress("compressing: " + inputFile);
         generalProgress("outputFolder: " + outputFolder);
 
-        if (!inputFile || inputFile.trim().length==0) {
-            reject( "Require an input file to compress");
-        }
+        validationError = validateInputFile(inputFile);
 
-        if(!FS.existsSync(inputFile)){
-            reject("Could not find input file " + inputFile);
+        if(validationError){
+            reject(validationError)
         }
 
         if (!outputFolder || outputFolder.trim().length==0) {

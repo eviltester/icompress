@@ -175,15 +175,11 @@
 
         // rest of electron app
 
-        const {ipcRenderer, shell} = require( 'electron' );
-        //const ipcRenderer=undefined;
-        //const worker = new Worker('compress-web-worker.js');
+    const {ipcRenderer, shell} = require( 'electron' );
+
     document.getElementById( 'chooseFileToCompress' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-input-file');
     }
-    // document.getElementById( 'chooseFileToCompress' ).onclick = function() {
-    //     worker.postMessage({'cmd': 'chooseFileToCompress'})
-    // }
 
     document.getElementById( 'chooseOutputFolder' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-output-folder');
@@ -194,7 +190,7 @@
             alert("You must choose an input file to compress");
             return;
         }
-        logGridOptions.api.setRowData();
+        logGridOptions.api.setRowData([]);
         startLoadingSpinner();
         ipcRenderer.invoke('app:compress-images-insitu', inputFileName).then(
             (result) => {
@@ -229,7 +225,7 @@
         }
 
         startLoadingSpinner();
-        logGridOptions.api.setRowData();
+        logGridOptions.api.setRowData([]);
         ipcRenderer.invoke('app:compress-images-to', inputFileName, outputFolder).then(
             (result) => {
                 //document.getElementById("messageresponse").innerText = result;
