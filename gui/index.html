@@ -226,15 +226,55 @@
 
         startLoadingSpinner();
         logGridOptions.api.setRowData([]);
-        ipcRenderer.invoke('app:compress-images-to', inputFileName, outputFolder).then(
-            (result) => {
-                //document.getElementById("messageresponse").innerText = result;
-            }).catch((error) => {
-            document.getElementById("errorMessage").innerText = error;
-        });
+        ipcRenderer.send('app:compress-images-to', inputFileName, outputFolder);
+        console.log("should have no issues");
+        // .then(
+        //     (result) => {
+        //         //document.getElementById("messageresponse").innerText = result;
+        //     }).catch((error) => {
+        //     document.getElementById("errorMessage").innerText = error;
+        // });
     };
 
-    ipcRenderer.on('general-update', (event, messages)=>{
+
+    //    https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
+    // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
+    var compressionWebSocket;
+    var websocketConnector;
+
+    function connectWebSocket(port){
+        websocketConnector = setInterval(()=>{
+
+            if(!compressionWebSocket) {
+                compressionWebSocket = new WebSocket(`ws://localhost:${port}/`, "echo-protocol");
+                compressionWebSocket.onmessage = function (event) {
+                    console.log("Socket progress message");
+                    console.log(event.data);
+                    logMessages((JSON.parse(event.data)));
+                }
+                compressionWebSocket.onopen = function (event) {
+                    compressionWebSocket.send("app:start-compression");
+                    console.log("connected from GUI")
+                    clearInterval(websocketConnector);
+                }
+                compressionWebSocket.onerror = function(err) {
+                    console.error('Socket encountered error: ', err.message, 'Closing socket');
+                    compressionWebSocket.close();
+                    compressionWebSocket=undefined;
+                    connectWebSocket(port);
+                };
+            }
+            if(compressionWebSocket){
+                clearInterval(websocketConnector);
+            }
+        }, 100);
+    }
+
+    ipcRenderer.on('general-update-port', (event, port)=>{
+        connectWebSocket(port);
+    });
+
+    function logMessages(messages){
         //const textArea = document.getElementById("messageresponse");
         console.log(messages);
         //textArea.innerText = message.msg + "\n" + textArea.innerText;
@@ -251,7 +291,7 @@
             }
         }else{
             if(messages.msg && messages.msg.trim()!="") {
-                log.push({timestamp: message.timestamp, message: message.msg})
+                log.push({timestamp: messages.timestamp, message: messages.msg})
             }else{
                 if(!messages.msg) {
                     log.push({timestamp: Date.now(), message: JSON.stringify(messages)})
@@ -263,6 +303,18 @@
             logGridOptions.api.applyTransactionAsync({
                 add: log
             });
+        }
+    }
+
+    ipcRenderer.on('general-update', (event, messages)=>{
+        logMessages(messages);
+    })
+
+    ipcRenderer.on('close-compression-web-socket', (event, message)=>{
+        clearInterval(websocketConnector);
+        if(compressionWebSocket){
+            compressionWebSocket.close();
+            compressionWebSocket=undefined;
         }
     })
 

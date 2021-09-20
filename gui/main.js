@@ -120,40 +120,32 @@ const { Worker } = require('worker_threads')
 
 ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 
-    return new Promise((resolve, reject)=> {
-
         generalProgress("compressing in situ: " + inputFile);
 
-        validationError = validateInputFile(inputFile);
-
-        if(validationError){
-            reject(validationError)
-        }
-
-        compressionWorker(inputFile).
-        then(()=>{resolve("compressed " + inputFile)}).
-        catch((error)=>{reject(error)});
-
-    });
+        validateInputFile(inputFile).then(
+            compressionWorker(inputFile).
+            then(()=>{resolve("compressed " + inputFile)}).
+            catch((error)=>{reject(error)})
+        ).catch(error=>{generalProgress(error)});
 
 })
 
 // returns error message if fail validation
 function validateInputFile(inputFile){
 
-    try {
+    return new Promise((resolve, reject )=>{
         if (!inputFile || inputFile.trim().length == 0) {
-            return ("Require an input file to compress");
+            reject ("Require an input file to compress");
         }
 
-        if (!FS.existsSync(inputFile)) {
-            return ("Could not find input file " + inputFile);
-        }
-    }catch(error){
-        return error;
-    }
-
-    return undefined;
+        FS.exists(inputFile,(exists)=> {
+            if(!exists){
+                reject("Could not find input file " + inputFile);
+            }else{
+                resolve(inputFile)
+            }
+        })
+    });
 }
 
 function compressionWorker(inputFile, outputFolder){
@@ -161,6 +153,7 @@ function compressionWorker(inputFile, outputFolder){
     return new Promise((resolve, reject)=>{
         const worker = new Worker('../bin/compress-worker.js');
         worker.on('message', (message) => {
+            console.log("on message " + JSON.stringify(message));
             if (message.progress) {
                 generalProgress(message.progress);
             }
@@ -191,38 +184,39 @@ function compressionWorker(inputFile, outputFolder){
             }
         })
 
+        // tell GUI to connect to websocket on port
+        win.webContents.send('general-update-port', 8080);
+
         if(outputFolder===undefined || outputFolder===null) {
             worker.postMessage({action: "compressInSitu", inputFile: inputFile});
         }else{
             worker.postMessage({action: "compressTo",
                                 inputFile: inputFile,
-                                outputFolder: outputFolder});
+                                outputFolder: outputFolder, port:8080});
         }
     })
 }
 
-ipcMain.handle('app:compress-images-to', async (event, inputFile, outputFolder) => {
-
-
-    return new Promise((resolve, reject)=>{
+ipcMain.on('app:compress-images-to', (event, inputFile, outputFolder) => {
 
         generalProgress("compressing: " + inputFile);
         generalProgress("outputFolder: " + outputFolder);
 
-        validationError = validateInputFile(inputFile);
+        validateInputFile(inputFile).
+            then(()=>{
+            if (!outputFolder || outputFolder.trim().length==0) {
+                generalProgress("Require an output file to save to");
+            }else {
+                compressionWorker(inputFile, outputFolder).then(() => {
+                    generalProgress("compressed " + inputFile + " to " + outputFolder);
+                    win.webContents.send('close-compression-web-socket', "");
+                }).catch((error) => {
+                    generalProgress(error)
+                });
+            }
+        }).catch(errorMessage =>{
+            generalProgress(validationError)
+        });
 
-        if(validationError){
-            reject(validationError)
-        }
-
-        if (!outputFolder || outputFolder.trim().length==0) {
-            reject("Require an output file to save to");
-        }
-
-        compressionWorker(inputFile, outputFolder).
-        then(()=>{resolve("compressed " + inputFile + " to " + outputFolder)}).
-        catch((error)=>{reject(error)});
-
-    });
 
 })
