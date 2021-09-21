@@ -92,36 +92,40 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
 
     const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
 
-    const stats = FS.statSync(inputFileName);
-    const originalFileSizeInBytes = stats.size;
-    
-    return new Promise((resolve, reject)=> {
-        // wrap in a promise and delete if output length is greater than input
-        // this is particularly important when we generate combinations of commands
-        Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
-        then((details)=>{
-                events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
-                //delete if output length is greater than input
-                details.commandDetails.status="COMPRESSED";
-                // todo: add a compression amount and %age
-                if(details.commandDetails.outputFileSize >= originalFileSizeInBytes){
-                    try{
-                        FS.unlinkSync(outputFileName);
-                        details.commandDetails.status = "DELETED";
-                        events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
-                            " >= " + originalFileSizeInBytes + " - " + outputFileName));
-
-                    }catch(err){
-                        events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
-                        throw(err);
-                    }
-                }
-                resolve(details);
+    return new Promise((resolve, reject)=>{
+        FS.stat(inputFileName, (err, stats)=>{
+            if(err){
+                reject(err);
             }
-        ).catch((error)=>{
-            reject(error);
-        })
-    });
+
+            const originalFileSizeInBytes = stats.size;
+
+            Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
+            then((details)=>{
+                    events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
+                    //delete if output length is greater than input
+                    details.commandDetails.status="COMPRESSED";
+                    // todo: add a compression amount and %age
+                    if(details.commandDetails.outputFileSize >= originalFileSizeInBytes){
+                        try{
+                            FS.unlinkSync(outputFileName);
+                            details.commandDetails.status = "DELETED";
+                            events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
+                                " >= " + originalFileSizeInBytes + " - " + outputFileName));
+
+                        }catch(err){
+                            events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
+                            throw(err);
+                        }
+                    }
+                    resolve(details);
+                }
+            ).catch((error)=>{
+                reject(error);
+            })
+        });
+    })
+
 }
 
 module.exports={

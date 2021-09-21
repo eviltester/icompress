@@ -26,8 +26,11 @@ class PageQueueManager{
 
         page.getDom().
         then((page)=>{
-            Persist.createDirForUrlHostname(page.getUrl());
-            this.pageQueues.addToQueue(page, QueueNames.READY_TO_SCAN);
+            Persist.createDirForUrlHostname(page.getUrl()).
+            then(msg =>
+                this.pageQueues.addToQueue(page, QueueNames.READY_TO_SCAN)
+            ).catch(error => throw error);
+
         }).catch((error)=>{
             this.pageQueues.addToQueue(page, QueueNames.ERROR_PROCESSING_PAGES);
             console.log("processing error");

@@ -5,7 +5,7 @@ const path = require('path')
 
 const ImageDetails = require("../bin/imageDetails.js");
 const ImageStates = ImageDetails.States;
-const Compress = require("../bin/imageCompression");
+//const Compress = require("../bin/imageCompression");
 const Persist = require("../bin/imagePersistence");
 let win = undefined;
 
@@ -90,7 +90,7 @@ function imageUpdate(anImage){
 }
 
 
-Compress.events.registerListener("general-update", generalProgress);
+//Compress.events.registerListener("general-update", generalProgress);
 
 ipcMain.handle('app:compress-choose-input-file', async (event) => {
     dialog.showOpenDialog({
@@ -118,17 +118,7 @@ ipcMain.handle('app:compress-choose-output-folder', async (event) => {
 // https://nodejs.org/docs/latest-v10.x/api/worker_threads.html
 const { Worker } = require('worker_threads')
 
-ipcMain.handle('app:compress-images-insitu', async (event, inputFile) => {
 
-        generalProgress("compressing in situ: " + inputFile);
-
-        validateInputFile(inputFile).then(
-            compressionWorker(inputFile).
-            then(()=>{resolve("compressed " + inputFile)}).
-            catch((error)=>{reject(error)})
-        ).catch(error=>{generalProgress(error)});
-
-})
 
 // returns error message if fail validation
 function validateInputFile(inputFile){
@@ -138,8 +128,11 @@ function validateInputFile(inputFile){
             reject ("Require an input file to compress");
         }
 
-        FS.exists(inputFile,(exists)=> {
-            if(!exists){
+        FS.stat(inputFile,(error, stats)=> {
+            if(error){
+                reject(error);
+            }
+            if(!stats.isFile()){
                 reject("Could not find input file " + inputFile);
             }else{
                 resolve(inputFile)
@@ -188,7 +181,7 @@ function compressionWorker(inputFile, outputFolder){
         win.webContents.send('general-update-port', 8080);
 
         if(outputFolder===undefined || outputFolder===null) {
-            worker.postMessage({action: "compressInSitu", inputFile: inputFile});
+            worker.postMessage({action: "compressInSitu", inputFile: inputFile, port:8080});
         }else{
             worker.postMessage({action: "compressTo",
                                 inputFile: inputFile,
@@ -196,6 +189,20 @@ function compressionWorker(inputFile, outputFolder){
         }
     })
 }
+
+ipcMain.on('app:compress-images-insitu',  (event, inputFile) => {
+
+    generalProgress("compressing in situ: " + inputFile);
+
+    validateInputFile(inputFile).then(
+        compressionWorker(inputFile).
+        then(()=>{
+            generalProgress("compressed " + inputFile);
+            win.webContents.send('close-compression-web-socket', "");}).
+        catch((error)=>{generalProgress(error)})
+    ).catch(error=>{generalProgress(error)});
+
+})
 
 ipcMain.on('app:compress-images-to', (event, inputFile, outputFolder) => {
 
@@ -215,8 +222,6 @@ ipcMain.on('app:compress-images-to', (event, inputFile, outputFolder) => {
                 });
             }
         }).catch(errorMessage =>{
-            generalProgress(validationError)
+            generalProgress(errorMessage)
         });
-
-
 })

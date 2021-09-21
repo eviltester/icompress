@@ -128,8 +128,12 @@ function compressToFolder(inputFile, outputFolder){
     inputImage.setOriginalFileName(fileName);
     inputImage.setState(ImageStates.READY_TO_COMPRESS);
 
-    const stats = FS.statSync(inputFile);
-    inputImage.setContentLength(stats.size);
+    FS.stat(inputFile, (err, stats)=>{
+        if(!err){
+            inputImage.setContentLength(stats.size);
+        }
+    });
+
 
     // imageQManager.addImageToCompressQueue(inputImage);
     // but...since this is a single file, we can just await the compression code
@@ -160,7 +164,13 @@ parentPort.on("message", message => {
     }
 
     if(message.action === "compressInSitu"){
-        compressInSitu(message.inputFile);
+        if(message.port){
+            startWebSocket(message.port);
+            socketInputFile = message.inputFile;
+            socketOutputFolder = message.outputFolder;
+        }else {
+            compressInSitu(message.inputFile);
+        }
     }
 
     if(message.action === "compressTo"){

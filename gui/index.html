@@ -192,13 +192,7 @@
         }
         logGridOptions.api.setRowData([]);
         startLoadingSpinner();
-        ipcRenderer.invoke('app:compress-images-insitu', inputFileName).then(
-            (result) => {
-                //document.getElementById("messageresponse").innerText = result;
-            }).catch((error) => {
-                document.getElementById("errorMessage").innerText = error;
-        });
-        console.log("compress in situ started");
+        ipcRenderer.send('app:compress-images-insitu', inputFileName);
     };
 
     function startLoadingSpinner(){
@@ -227,13 +221,6 @@
         startLoadingSpinner();
         logGridOptions.api.setRowData([]);
         ipcRenderer.send('app:compress-images-to', inputFileName, outputFolder);
-        console.log("should have no issues");
-        // .then(
-        //     (result) => {
-        //         //document.getElementById("messageresponse").innerText = result;
-        //     }).catch((error) => {
-        //     document.getElementById("errorMessage").innerText = error;
-        // });
     };
 
 

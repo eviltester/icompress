@@ -99,34 +99,32 @@ function compressTo(imageToCompress, outputFilePath, forceCompressFfmpeg, forceC
 
     events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
 
-    if(AnimatedGifDetector(FS.readFileSync(imageToCompress.getFullFilePath()))){
+    return new Promise((resolve, reject)=>{
 
-        return new Promise((resolve, reject)=> {
-            ffmpegCompress(imageToCompress, inputFileName, outputFileName, forceCompressFfmpeg)
-                .then((image) => {
-                    imageMagickCompress(imageToCompress, outputFileName, compressedFileName, forceCompressImageMagick)
-                        .then((image) => {
-                            resolve(image);
-                        })
-                        .catch((image) => {
-                            reject(image);
-                        });
-                })
-                .catch((image) => {
-                    reject(image);
+        FS.readFile(imageToCompress.getFullFilePath(), (err, data)=>{
+            if(AnimatedGifDetector(data)){
+                ffmpegCompress(imageToCompress, inputFileName, outputFileName, forceCompressFfmpeg)
+                    .then((image) => {
+                        imageMagickCompress(imageToCompress, outputFileName, compressedFileName, forceCompressImageMagick)
+                            .then((image) => {
+                                resolve(image);
+                            })
+                            .catch((image) => {
+                                reject(image);
+                            });
+                    })
+                    .catch((image) => {
+                        reject(image);
+                    });
+            }else{
+                imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
+                    resolve(image);
+                }).catch((image) => {
+                    reject(image)
                 });
+            }
         });
-
-    }else{
-        // just apply image magic
-        return new Promise((resolve, reject)=> {
-            imageMagickCompress(imageToCompress, inputFileName, compressedFileName, forceCompressImageMagick).then((image) => {
-                resolve(image);
-            }).catch((image) => {
-                reject(image)
-            });
-        });
-    }
+    });
 }
 
 

@@ -14,20 +14,37 @@ const ImageDetails = require("./imageDetails.js");
 
 
 function createDirForUrlHostname(aUrl){
-    const givenUrl = new Url(aUrl);
-    createDir(givenUrl.hostname);
-    return givenUrl.hostname;
+    return new Promise((resolve, reject) =>{
+        const givenUrl = new Url(aUrl);
+        createDir(givenUrl.hostname).
+        then(success => resolve(givenUrl.hostname)).
+        catch(err => reject(err));
+    });
 }
 
 function createDir(dir){
-    console.log("creating: "  + dir);
-    try {
-        if (!FS.existsSync(dir)) {
-            FS.mkdirSync(dir, { recursive: true }); // create all subdirectories
-        }
-    } catch (err) {
-        console.error(err);
-    }
+    return new Promise((resolve, reject)=>{
+        console.log("creating: "  + dir);
+        FS.stat(dir,(err,stats)=>{
+            if(err){
+                reject(err);
+            }
+
+            if(stats.isFile()){
+                reject("File exists where you want to create directory");
+            }
+
+            if(!stats.isDirectory()){
+                FS.mkdir(dir, { recursive: true }, (err)=>{
+                    if(err){
+                        reject(err);
+                    }
+
+                    resolve("created: "  + dir);
+                })
+            }
+        })
+    })
 }
 
 function combineIntoPath(...pathParts) {
@@ -82,10 +99,15 @@ function createFolderStructureForImage(image, root) {
                                     image.getOriginalFileName());
 
             image.setFileDirPath(fileDirPath);
-            createDir(fileDirPath);
+            createDir(fileDirPath).then(msg => {
+                image.setState(ImageDetails.States.FILE_SYSTEM_IS_READY);
+                resolve(image);
+            }).catch(err =>{
+                image.setState(ImageDetails.States.ERROR_CREATING_FOLDERS);
+                image.addErrorReport(error);
+                reject(image);
+            })
 
-            image.setState(ImageDetails.States.FILE_SYSTEM_IS_READY);
-            resolve(image);
         }catch(error){
             image.setState(ImageDetails.States.ERROR_CREATING_FOLDERS);
             image.addErrorReport(error);

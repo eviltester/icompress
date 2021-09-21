@@ -15,12 +15,36 @@ function downloadFile(fromUrl, toFilePath, forceDownload) {
 
     if (typeof forceDownload === 'undefined') { forceDownload = false; }
 
+    if(forceDownload){
+        return promiseToDownloadFile(fromUrl, toFilePath);
+    }
+
     // do not download again if already exists
-    if(!forceDownload && FS.existsSync(toFilePath)){
+    if(FS.existsSync(toFilePath)){
         console.log("FILE EXISTS: skipping download for " + toFilePath);
         return new Promise(resolve => resolve({}));
     }
 
+    return new Promise((resolve, reject)=>{
+        FS.stat(toFilePath, (err,stats)=>{
+            if(err){
+                console.log("FILE EXISTS: skipping download for " + toFilePath);
+                resolve({});
+            }
+
+            if(!stats.isFile()){
+                promiseToDownloadFile(fromUrl, toFilePath).
+                then(response => resolve(response)).
+                catch(error => reject(error));
+            }
+        })
+    })
+
+
+
+}
+
+function promiseToDownloadFile(fromUrl, toFilePath){
     return new Promise((resolve, reject) => {
         const fileStream = FS.createWriteStream(toFilePath);
         fetch(fromUrl).
