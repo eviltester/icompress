@@ -4,7 +4,7 @@ const FS = require('fs');
 
 const Events = require("./events.js");
 const events = new Events.Register();
-events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
@@ -19,7 +19,7 @@ function execPromise(command) {
 
 function commandExists(command){
     try{
-        console.log(command)
+//        console.log(command)
         execSync(command);
         return true;
     }catch(err){

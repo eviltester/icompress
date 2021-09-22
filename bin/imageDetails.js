@@ -85,7 +85,7 @@ class ImageDetails{
     }
 
     addErrorReport = (error)=> {
-        console.log(error)
+        //console.log(error)
         this.errorReport = error;
     };
 

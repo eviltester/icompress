@@ -66,8 +66,8 @@ class ImageQueueManager{
                     resolve(img);
                 }).catch((errorDetails) => {
                 this.imageQueues.addToQueue(img, QueueNames.ERROR_PROCESSING_IMAGES);
-                console.log("image error");
-                console.log(errorDetails.error)
+                //console.log("image error");
+                //console.log(errorDetails.error)
                 reject(errorDetails.image)
             });
         });
@@ -135,7 +135,7 @@ class ImageQueueManager{
         imageToDownload.setState(ImageStates.ABOUT_TO_DOWNLOAD);
         this.imageQueues.moveFromQToQ(imageToDownload, QueueNames.IMAGES_TO_DOWNLOAD, QueueNames.DOWNLOADING_IMAGES);
 
-        console.log(this.imageQueues.reportOnQueueContents(QueueNames.IMAGES_TO_DOWNLOAD));
+        //console.log(this.imageQueues.reportOnQueueContents(QueueNames.IMAGES_TO_DOWNLOAD));
         ImageHTTP.downloadImageFile(imageToDownload, forceDownload).
         then(()=>{
             imageToDownload.setState(ImageStates.READY_TO_COMPRESS);

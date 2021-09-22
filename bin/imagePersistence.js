@@ -24,7 +24,7 @@ function createDirForUrlHostname(aUrl){
 
 function createDir(dir){
     return new Promise((resolve, reject)=>{
-        console.log("creating: "  + dir);
+//        console.log("creating: "  + dir);
         FS.stat(dir,(err,stats)=>{
             if(err){
                 reject(err);
@@ -91,7 +91,7 @@ function createFolderStructureForImage(image, root) {
             const fileName = fileNamePathParts[fileNamePathParts.length - 1];
             image.setOriginalFileName(fileName);
 
-            console.log("creating dir " + dir);
+            //console.log("creating dir " + dir);
 
             const fileDirPath = combineIntoPath(
                                     image.getRootFolder(),

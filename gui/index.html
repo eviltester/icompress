@@ -223,41 +223,6 @@
         ipcRenderer.send('app:compress-images-to', inputFileName, outputFolder);
     };
 
-    // todo: push the web socket processing and log message conversion into a web worker
-
-    // //    https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
-    // // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
-    // var compressionWebSocket;
-    // var websocketConnector;
-    //
-    // function connectWebSocket(port){
-    //     websocketConnector = setInterval(()=>{
-    //
-    //         if(!compressionWebSocket) {
-    //             compressionWebSocket = new WebSocket(`ws://localhost:${port}/`, "echo-protocol");
-    //             compressionWebSocket.onmessage = function (event) {
-    //                 console.log("Socket progress message");
-    //                 console.log(event.data);
-    //                 logMessages((JSON.parse(event.data)));
-    //             }
-    //             compressionWebSocket.onopen = function (event) {
-    //                 compressionWebSocket.send("app:start-compression");
-    //                 console.log("connected from GUI")
-    //                 clearInterval(websocketConnector);
-    //             }
-    //             compressionWebSocket.onerror = function(err) {
-    //                 console.error('Socket encountered error: ', err.message, 'Closing socket');
-    //                 compressionWebSocket.close();
-    //                 compressionWebSocket=undefined;
-    //                 connectWebSocket(port);
-    //             };
-    //         }
-    //         if(compressionWebSocket){
-    //             clearInterval(websocketConnector);
-    //         }
-    //     }, 100);
-    // }
-
     let socketWebWorker;
     function connectWebSocket(port){
         socketWebWorker = new Worker("./logSocketWebWorker.js");
@@ -268,99 +233,39 @@
                 webWorkerLogMessages(message.logMessages);
             }
         }
-        socketWebWorker.postMessage(JSON.stringify({action:"connect", port: port}));
+        const connectMessage = {action:'connect', port: port};
+        socketWebWorker.postMessage(JSON.stringify(connectMessage));
     }
 
     ipcRenderer.on('general-update-port', (event, port)=>{
         connectWebSocket(port);
     });
 
-    // log messages
-    // let log = [];
-    // let nextDisplayLog = [];
-    //
-    // // just add it into a queue and display it later
-    // function logMessages(messages){
-    //     //const textArea = document.getElementById("messageresponse");
-    //     //console.log(messages);
-    //     //textArea.innerText = message.msg + "\n" + textArea.innerText;
-    //
-    //     if(messages instanceof Array){
-    //         for(message of messages){
-    //             if(message.msg && message.msg.trim()!="") {
-    //                 log.push({timestamp: message.timestamp, message: message.msg})
-    //             }else{
-    //                 if(!messages.msg) {
-    //                     log.push({timestamp: Date.now(), message: JSON.stringify(messages)})
-    //                 }
-    //             }
-    //         }
-    //     }else{
-    //         if(messages.msg && messages.msg.trim()!="") {
-    //             log.push({timestamp: messages.timestamp, message: messages.msg})
-    //         }else{
-    //             if(!messages.msg) {
-    //                 log.push({timestamp: Date.now(), message: JSON.stringify(messages)})
-    //             }
-    //         }
-    //     }
-    //
-    //     queueDisplayMessages();
-    // }
+
 
     function webWorkerLogMessages(messages){
-        //log.push(messages)
-        console.log(messages);
         logGridOptions.api.applyTransactionAsync({
             add: messages
         });
     }
 
-    // function queueDisplayMessages(){
-    //     if(log.length>4) {
-    //         nextDisplayLog = log;
-    //         log = [];
-    //     }
-    //     requestAnimationFrame((nextDisplayLog)=>{
-    //         if(log.length>0){
-    //             logGridOptions.api.applyTransactionAsync({
-    //                 add: nextDisplayLog
-    //             });
-    //         }
-    //     })
-    // }
-    //
-    // // flush the queue
-    // function displayLogMessagesNow(){
-    //     logGridOptions.api.applyTransactionAsync({
-    //         add: nextDisplayLog
-    //     });
-    //     log=[];
-    // }
 
     ipcRenderer.on('general-update', (event, messages)=>{
-        //logMessages(messages);
-        console.log("General Update ");
-        console.log(messages);
+        if(messages instanceof Array){
+            webWorkerLogMessages(messages);
+        }else{
+            const msg = {}
+            msg.timestamp = messages.timestamp ? messages.timestamp : Date.now();
+            msg.message = messages.msg ? messages.msg : messages
+            webWorkerLogMessages([msg]);
+        }
     })
 
     ipcRenderer.on('close-compression-web-socket', (event, message)=>{
-        // clearInterval(websocketConnector);
-        // if(compressionWebSocket){
-        //     compressionWebSocket.close();
-        //     compressionWebSocket=undefined;
-        // }
         socketWebWorker.postMessage(JSON.stringify({action:"close"}));
-        // displayLogMessagesNow();
-        // setTimeout(displayLogMessagesNow,500); // catch any final messages
-        // clearInterval(pollDisplayMessageQueue);
     })
 
     ipcRenderer.on('image-update', (event, anImage)=>{
-        console.log("on image update");
-        //const imageArea = document.getElementById("imageresponse");
-        console.log(anImage);
-        //imageArea.innerText = JSON.stringify(anImage, null, 2);
         document.getElementById("imagedetails").innerHTML=imageUpdateHTML(anImage);
         stopLoadingSpinner();
     })

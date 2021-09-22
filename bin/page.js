@@ -47,8 +47,8 @@ class Page{
     }
 
     setState(newState){
-        console.log(this.#url);
-        console.log(newState);
+        // console.log(this.#url);
+        // console.log(newState);
 
         this.#state = newState;
         this.#states.push(newState);

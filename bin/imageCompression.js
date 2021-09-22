@@ -19,7 +19,7 @@ const Persist = require("./imagePersistence");
 
 const Events = require("./Events.js");
 const events = new Events.Register();
-events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 events.includeInRegisterChain(ImageMagick.events);
 
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompress) {

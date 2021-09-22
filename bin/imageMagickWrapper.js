@@ -6,7 +6,7 @@ const Path = require('path');
 const Events = require("./Events.js");
 const events = new Events.Register();
 
-events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 events.includeInRegisterChain(Shell.events);
 
 // This just wraps imageMagick

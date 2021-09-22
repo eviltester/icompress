@@ -9,14 +9,12 @@ function connectWebSocket(port){
         if(!compressionWebSocket) {
             compressionWebSocket = new WebSocket(`ws://localhost:${port}/`, "echo-protocol");
             compressionWebSocket.onmessage = function (event) {
-                console.log("Socket progress message");
-                console.log(event.data);
-                var message = {action: "log", logMessages: createLogMessages((JSON.parse(event.data)))};
+                messages =  createLogMessages(JSON.parse(event.data));
+                var message = {action: "log", logMessages: messages};
                 postMessage(JSON.stringify(message));
             }
             compressionWebSocket.onopen = function (event) {
                 compressionWebSocket.send("app:start-compression");
-                console.log("connected from GUI")
                 clearInterval(websocketConnector);
             }
             compressionWebSocket.onerror = function(err) {
@@ -34,7 +32,7 @@ function connectWebSocket(port){
 
 function createLogMessages(messages){
     //const textArea = document.getElementById("messageresponse");
-    console.log(messages);
+    // console.log(messages);
     //textArea.innerText = message.msg + "\n" + textArea.innerText;
     let log=[];
 
@@ -63,6 +61,7 @@ function createLogMessages(messages){
 
 
 onmessage = (event)=>{
+    //console.log(event.data);
     message = JSON.parse(event.data);
 
     if(message.action==="connect"){

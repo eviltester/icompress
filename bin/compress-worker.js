@@ -59,7 +59,7 @@ Compress.events.registerListener("general-update", generalProgress);
 function startWebSocket(wsHttpPort){
 
     httpServer = http.createServer(function(request, response) {
-        console.log((new Date()) + ' Received request for ' + request.url);
+        //console.log((new Date()) + ' Received request for ' + request.url);
         response.writeHead(404);
         response.end();
     });
@@ -86,18 +86,17 @@ function startWebSocket(wsHttpPort){
         }
 
         connection = request.accept('echo-protocol', request.origin);
-        console.log((new Date()) + ' Connection accepted.');
+        //console.log((new Date()) + ' Connection accepted.');
         connection.on('message', function(message) {
             if (message.type === 'utf8') {
-                console.log('Received Message: ' + message.utf8Data);
-                connection.sendUTF(message.utf8Data);
+                //console.log('Received Message: ' + message.utf8Data);
                 if(message.utf8Data=="app:start-compression"){
                     compressToFolder(socketInputFile, socketOutputFolder);
                 }
             }
             else if (message.type === 'binary') {
-                console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-                connection.sendBytes(message.binaryData);
+                //console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
+                //connection.sendBytes(message.binaryData);
             }
         });
         connection.on('close', function(reasonCode, description) {
