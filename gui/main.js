@@ -45,12 +45,12 @@ app.whenReady().then(() => {
 
 
 // message queue to try to make GUI more responsive
-let messages = [];
-let messageSender;
+// let messages = [];
+// let messageSender;
 
 function generalProgress(event){
 
-    clearTimeout(messageSender);
+    //clearTimeout(messageSender);
 
         let message = event;
         if(event.constructor.name === "Event"){
@@ -68,19 +68,19 @@ function generalProgress(event){
                 }
             }
         }
-      messages.push(message);
-
-      if(messages.length>5) {
-            win.webContents.send('general-update', messages);
-            messages = [];
-      }
-
-    messageSender = setTimeout(()=>{
-        if(messages.length>0) {
-            win.webContents.send('general-update', messages)
-            messages=[];
-        }
-    }, 500);
+      // messages.push(message);
+      //
+      // if(messages.length>5) {
+            win.webContents.send('general-update', message);
+    //         messages = [];
+    //   }
+    //
+    // messageSender = setTimeout(()=>{
+    //     if(messages.length>0) {
+    //         win.webContents.send('general-update', messages)
+    //         messages=[];
+    //     }
+    // }, 500);
 }
 
 function imageUpdate(anImage){
@@ -143,7 +143,6 @@ function validateInputFile(inputFile){
 
 function compressionWorker(inputFile, outputFolder){
 
-    return new Promise((resolve, reject)=>{
         const worker = new Worker('../bin/compress-worker.js');
         worker.on('message', (message) => {
             console.log("on message " + JSON.stringify(message));
@@ -154,12 +153,11 @@ function compressionWorker(inputFile, outputFolder){
                 imageUpdate(message.imageUpdate)
             }
             if (message.done) {
-                generalProgress(message.done)
-                worker.postMessage({action: "exit"})
+                worker.postMessage({action: "exit"});
             }
             if (message.exit) {
-                generalProgress("closed compression thread");
-                resolve();
+                //generalProgress("closed compression thread");
+                win.webContents.send('close-compression-web-socket', "");
             }
             if (message.error) {
                 generalProgress(message.error.error)
@@ -168,12 +166,10 @@ function compressionWorker(inputFile, outputFolder){
         });
         worker.on('error', (error) => {
             generalProgress(error)
-            reject(error);
         });
         worker.on('exit', (code) => {
             if (code !== 0) {
                 generalProgress(`Worker stopped with exit code ${code}`);
-                reject("unexpected exit");
             }
         })
 
@@ -187,7 +183,6 @@ function compressionWorker(inputFile, outputFolder){
                                 inputFile: inputFile,
                                 outputFolder: outputFolder, port:8080});
         }
-    })
 }
 
 ipcMain.on('app:compress-images-insitu',  (event, inputFile) => {
@@ -195,33 +190,26 @@ ipcMain.on('app:compress-images-insitu',  (event, inputFile) => {
     generalProgress("compressing in situ: " + inputFile);
 
     validateInputFile(inputFile).then(
-        compressionWorker(inputFile).
-        then(()=>{
-            generalProgress("compressed " + inputFile);
-            win.webContents.send('close-compression-web-socket', "");}).
-        catch((error)=>{generalProgress(error)})
-    ).catch(error=>{generalProgress(error)});
+        compressionWorker(inputFile)
+    ).catch(error=>{console.log(error)})
+
 
 })
 
 ipcMain.on('app:compress-images-to', (event, inputFile, outputFolder) => {
 
-        generalProgress("compressing: " + inputFile);
-        generalProgress("outputFolder: " + outputFolder);
+    generalProgress("compressing: " + inputFile);
+    generalProgress("outputFolder: " + outputFolder);
 
-        validateInputFile(inputFile).
-            then(()=>{
-            if (!outputFolder || outputFolder.trim().length==0) {
-                generalProgress("Require an output file to save to");
-            }else {
-                compressionWorker(inputFile, outputFolder).then(() => {
-                    generalProgress("compressed " + inputFile + " to " + outputFolder);
-                    win.webContents.send('close-compression-web-socket', "");
-                }).catch((error) => {
-                    generalProgress(error)
-                });
-            }
+    if (!outputFolder || outputFolder.trim().length==0) {
+        generalProgress("Require an output file to save to");
+        return;
+    }
+
+    validateInputFile(inputFile).
+        then(()=>{
+            compressionWorker(inputFile, outputFolder)
         }).catch(errorMessage =>{
-            generalProgress(errorMessage)
+           console.log(errorMessage);
         });
 })
