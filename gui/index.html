@@ -303,6 +303,8 @@
 
         imageGridOptions.api.setRowData();
 
+        const imageDataRows=[];
+
         // todo: order by outputfilesize
         for (const command of anImage.commands) {
 
@@ -316,37 +318,40 @@
                 outputFile: command.details.outputFileName
             }
 
-            imageGridOptions.api.applyTransactionAsync({
-                add: [
-                    imageData
-                ]
-            });
+            imageDataRows.push(imageData);
 
         }
 
-        imageGridOptions.api.sizeColumnsToFit();
-        imageGridOptions.columnApi.autoSizeColumn("status");
-        imageGridOptions.columnApi.autoSizeColumn("outputSize")
-        imageGridOptions.columnApi.autoSizeColumn("compression")
-        imageGridOptions.columnApi.autoSizeColumn("command")
+        imageGridOptions.api.applyTransactionAsync({
+            add: imageDataRows
+        }, ()=>{
 
-        imageGridOptions.columnApi.applyColumnState({
-            state: [
-                {
-                    colId: 'outputSize',
-                    sort: 'asc'
-                }
-            ]
+            imageGridOptions.api.sizeColumnsToFit();
+            imageGridOptions.columnApi.autoSizeColumn("status");
+            imageGridOptions.columnApi.autoSizeColumn("outputSize")
+            imageGridOptions.columnApi.autoSizeColumn("compression")
+            imageGridOptions.columnApi.autoSizeColumn("command")
+
+            imageGridOptions.columnApi.applyColumnState({
+                state: [
+                    {
+                        colId: 'outputSize',
+                        sort: 'asc'
+                    }
+                ]
+            });
         });
+
+
     }
 
 window.onresize = () => {
-    imageGridOptions.api.sizeColumnsToFit();
-    imageGridOptions.columnApi.autoSizeColumn("status");
-    imageGridOptions.columnApi.autoSizeColumn("outputSize")
-    imageGridOptions.columnApi.autoSizeColumn("compression")
-    imageGridOptions.columnApi.autoSizeColumn("command")
-    logGridOptions.api.sizeColumnsToFit();
+    // imageGridOptions.api.sizeColumnsToFit();
+    // imageGridOptions.columnApi.autoSizeColumn("status");
+    // imageGridOptions.columnApi.autoSizeColumn("outputSize")
+    // imageGridOptions.columnApi.autoSizeColumn("compression")
+    // imageGridOptions.columnApi.autoSizeColumn("command")
+    // logGridOptions.api.sizeColumnsToFit();
 }
 
 </script>
