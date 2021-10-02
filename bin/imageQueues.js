@@ -4,7 +4,7 @@
 // if it didn't then queues would be renamed to images
 
 const Queues = require("./qManager");
-const ImageDetails = require("./imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 const ImageHTTP = require("./imageHttp");
 const ImageStates = ImageDetails.States;
 const CompressImage = require("./imageCompression");

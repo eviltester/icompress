@@ -1,0 +1,3 @@
+- create a webserver version of the GUI
+- replicate the same functionality as the electron app
+- see if it is easier as a straight forward web app using web sockets and HTTP APis

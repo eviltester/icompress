@@ -21,7 +21,7 @@ const Url = require('url').URL;
 
 const PageQueues = require("./pageQueues.js");
 const ImageQueues = require("./imageQueues.js");
-const ImageDetails = require("./imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 const ImageStates = ImageDetails.States;
 
 const Persist = require("./imagePersistence");

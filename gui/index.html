@@ -177,6 +177,21 @@
 
     const {ipcRenderer, shell} = require( 'electron' );
 
+
+
+    // create an abstraction to allow experimentation with different server implementations
+    // start is the 'server' communication control object for longer running tasks
+    const start = {
+        compressImagesTo : (inputFileName, outputFolder)=>{
+            ipcRenderer.send('app:compress-images-to', inputFileName, outputFolder);
+        },
+
+        compressImageInSitu : (inputFileName) => {
+            ipcRenderer.send('app:compress-images-insitu', inputFileName);
+        }
+    }
+
+
     document.getElementById( 'chooseFileToCompress' ).onclick = function() {
         ipcRenderer.invoke('app:compress-choose-input-file');
     }
@@ -192,7 +207,7 @@
         }
         logGridOptions.api.setRowData([]);
         startLoadingSpinner();
-        ipcRenderer.send('app:compress-images-insitu', inputFileName);
+        start.compressImageInSitu(inputFileName);
     };
 
     function startLoadingSpinner(){
@@ -202,6 +217,7 @@
     function stopLoadingSpinner(){
         document.querySelectorAll(".loading").forEach((elem)=>elem.style.display="none");
     }
+
 
 
     document.getElementById( 'compresssinglefileTo' ).onclick = function() {
@@ -220,30 +236,12 @@
 
         startLoadingSpinner();
         logGridOptions.api.setRowData([]);
-        ipcRenderer.send('app:compress-images-to', inputFileName, outputFolder);
+
+        start.compressImagesTo(inputFileName, outputFolder)
     };
 
-    let socketWebWorker;
-    function connectWebSocket(port){
-        socketWebWorker = new Worker("./logSocketWebWorker.js");
-        socketWebWorker.onmessage = (event)=>{
-            message = JSON.parse(event.data);
 
-            if(message.action==="log"){
-                webWorkerLogMessages(message.logMessages);
-            }
-        }
-        const connectMessage = {action:'connect', port: port};
-        socketWebWorker.postMessage(JSON.stringify(connectMessage));
-    }
-
-    ipcRenderer.on('general-update-port', (event, port)=>{
-        connectWebSocket(port);
-    });
-
-
-
-    function webWorkerLogMessages(messages){
+    function logMessages(messages){
         logGridOptions.api.applyTransactionAsync({
             add: messages
         });
@@ -252,17 +250,13 @@
 
     ipcRenderer.on('general-update', (event, messages)=>{
         if(messages instanceof Array){
-            webWorkerLogMessages(messages);
+            logMessages(messages);
         }else{
             const msg = {}
             msg.timestamp = messages.timestamp ? messages.timestamp : Date.now();
             msg.message = messages.msg ? messages.msg : messages
-            webWorkerLogMessages([msg]);
+            logMessages([msg]);
         }
-    })
-
-    ipcRenderer.on('close-compression-web-socket', (event, message)=>{
-        socketWebWorker.postMessage(JSON.stringify({action:"close"}));
     })
 
     ipcRenderer.on('image-update', (event, anImage)=>{

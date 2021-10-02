@@ -3,7 +3,7 @@ const { ipcMain } = require('electron')
 
 const path = require('path')
 
-const ImageDetails = require("../bin/imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 const ImageStates = ImageDetails.States;
 //const Compress = require("../bin/imageCompression");
 const Persist = require("../bin/imagePersistence");
@@ -42,45 +42,25 @@ app.whenReady().then(() => {
     })
 })
 
-
-
-// message queue to try to make GUI more responsive
-// let messages = [];
-// let messageSender;
-
 function generalProgress(event){
 
-    //clearTimeout(messageSender);
-
-        let message = event;
-        if(event.constructor.name === "Event"){
-            message = event;
+    let message = event;
+    if(event.constructor.name === "Event"){
+        message = event;
+    }else {
+        if(event.constructor.name === "String"){
+            message = Events.newLogEvent(event)
         }else {
-            if(event.constructor.name === "String"){
-                message = Events.newLogEvent(event)
-            }else {
-                if (typeof message === "object") {
-                    if (message.type && message.type === "log") {
-                        message = event;
-                    } else {
-                        message = Events.newLogEvent(JSON.stringify(event)).setObject(event);
-                    }
+            if (typeof message === "object") {
+                if (message.type && message.type === "log") {
+                    message = event;
+                } else {
+                    message = Events.newLogEvent(JSON.stringify(event)).setObject(event);
                 }
             }
         }
-      // messages.push(message);
-      //
-      // if(messages.length>5) {
-            win.webContents.send('general-update', message);
-    //         messages = [];
-    //   }
-    //
-    // messageSender = setTimeout(()=>{
-    //     if(messages.length>0) {
-    //         win.webContents.send('general-update', messages)
-    //         messages=[];
-    //     }
-    // }, 500);
+    }
+    win.webContents.send('general-update', message);
 }
 
 function imageUpdate(anImage){
@@ -143,7 +123,7 @@ function validateInputFile(inputFile){
 
 function compressionWorker(inputFile, outputFolder){
 
-        const worker = new Worker('../bin/compress-worker.js');
+        const worker = new Worker('../src/workers/compress-worker.js');
         worker.on('message', (message) => {
             console.log("on message " + JSON.stringify(message));
             if (message.progress) {
@@ -156,8 +136,7 @@ function compressionWorker(inputFile, outputFolder){
                 worker.postMessage({action: "exit"});
             }
             if (message.exit) {
-                //generalProgress("closed compression thread");
-                win.webContents.send('close-compression-web-socket', "");
+                generalProgress("closed compression thread");
             }
             if (message.error) {
                 generalProgress(message.error.error)
@@ -172,9 +151,6 @@ function compressionWorker(inputFile, outputFolder){
                 generalProgress(`Worker stopped with exit code ${code}`);
             }
         })
-
-        // tell GUI to connect to websocket on port
-        win.webContents.send('general-update-port', 8080);
 
         if(outputFolder===undefined || outputFolder===null) {
             worker.postMessage({action: "compressInSitu", inputFile: inputFile, port:8080});

@@ -1,5 +1,5 @@
 const HTTP = require("./httpWrapper.js");
-const ImageDetails = require("./imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 const Path = require('path');
 
 function getImageHeaders(img) {

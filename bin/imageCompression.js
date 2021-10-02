@@ -9,7 +9,7 @@ const FS = require('fs');
 // https://www.npmjs.com/package/animated-gif-detector
 const AnimatedGifDetector = require('animated-gif-detector');
 
-const ImageDetails = require("./imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 const ImageStates = ImageDetails.States;
 const FFMPEG = require("./ffmpegWrapper.js");
 const ImageMagick = require("./imageMagickWrapper.js");

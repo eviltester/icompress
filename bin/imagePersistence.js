@@ -5,7 +5,7 @@ const FS = require('fs');
 const Url = require('url').URL;
 const Path = require('path');
 
-const ImageDetails = require("./imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails.js");
 
 /*
     Directory/File Management
