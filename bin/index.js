@@ -30,6 +30,56 @@ const Compress = require("../src/compression/imageCompression");
 
 const QueueBasedScanner = require("../src/app/queueBasedScanner");
 
+const Ipc = require('node-ipc');
+
+
+const ipc = new Ipc.IPCModule();
+ipc.config.id = 'world';
+ipc.config.retry=1500;
+
+ipc.serve(
+    function(){
+        ipc.server.on(
+            'app.message',
+            function(data,socket){
+                ipc.log('ipc got a message from', (data.id), (data.message));
+                console.log('ipc console got a message from', (data.id), (data.message));
+                // ipc.server.emit(
+                //     socket,
+                //     'app.message',
+                //     {
+                //         id      : ipc.config.id,
+                //         message : data.message+' world!'
+                //     }
+                // );
+
+                // if(messages.hello && messages.goodbye){
+                //     ipc.log('got all required events, telling clients to kill connection');
+                //     ipc.server.broadcast(
+                //         'kill.connection',
+                //         {
+                //             id:ipc.config.id
+                //         }
+                //     );
+                // }
+            }
+        );
+    }
+);
+
+ipc.server.start();
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -212,6 +262,12 @@ const quitIfQueuesAreEmpty = ()=>{
 
 
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
+
+
+
+
+
+
 
 scanner.startQueueProcessing();
 

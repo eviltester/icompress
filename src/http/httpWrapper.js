@@ -10,6 +10,16 @@ const FS = require('fs');
 // https://www.npmjs.com/package/jsdom
 // https://medium.com/@bretcameron/how-to-build-a-web-scraper-using-javascript-11d7cd9f77f2
 
+const IpcLogging = require('../app/ipcLoggerClient');
+
+const ipcLogger = new IpcLogging.IpcLoggerClient("httpWrapper")
+ipcLogger.connect();
+
+function logMessage(message){
+    console.log(message);
+    ipcLogger.logMessage(message);
+}
+
 // a downloadFile method which... given a url and an output path downloads the file and writes it to disk
 function downloadFile(fromUrl, toFilePath, forceDownload) {
 
@@ -20,15 +30,15 @@ function downloadFile(fromUrl, toFilePath, forceDownload) {
     }
 
     // do not download again if already exists
-    if(FS.existsSync(toFilePath)){
-        console.log("FILE EXISTS: skipping download for " + toFilePath);
-        return new Promise(resolve => resolve({}));
-    }
+    // if(FS.existsSync(toFilePath)){
+    //     logMessage("FILE EXISTS: skipping download for " + toFilePath);
+    //     return new Promise(resolve => resolve({}));
+    // }
 
     return new Promise((resolve, reject)=>{
         FS.stat(toFilePath, (err,stats)=>{
             if(err){
-                console.log("FILE EXISTS: skipping download for " + toFilePath);
+                logMessage("FILE EXISTS: skipping download for " + toFilePath);
                 resolve({});
             }
 
@@ -63,7 +73,7 @@ function promiseToDownloadFile(fromUrl, toFilePath){
 
 function getDomFromUrl(url){
 
-    console.log("Getting "  + url);
+    logMessage("Getting "  + url);
 
     return new Promise((resolve, reject) => {
 
@@ -72,8 +82,8 @@ function getDomFromUrl(url){
         }).then((text)=>{
             resolve(new JSDOM(text))
         }).catch((error)=>{
-            console.log("could not get " + url);
-            console.log(error);
+            logMessage("could not get " + url);
+            logMessage(error);
             reject(error);
         })
     });
@@ -83,7 +93,7 @@ function getHeaders(url) {
     return new Promise((resolve, reject) => {
         fetch(url, {method: 'HEAD'}).
         then(function(response) {
-            console.log(response.headers);
+            //console.log(response.headers);
             resolve(response.headers);
         }).
         catch((error)=>{

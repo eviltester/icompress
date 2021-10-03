@@ -2,9 +2,17 @@ const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
 const FS = require('fs');
 
-const Events = require("../logging/events");
-const events = new Events.Register();
-//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
+const IpcLogging = require('../app/ipcLoggerClient');
+
+const ipcLogger = new IpcLogging.IpcLoggerClient("compress")
+ipcLogger.connect();
+
+function logMessage(message){
+    //events.alertListeners(Events.newLogEvent(message));
+    //console.log(message);
+    ipcLogger.logMessage(message);
+}
+
 
 function execPromise(command) {
     return new Promise(function(resolve, reject) {
@@ -29,7 +37,8 @@ function commandExists(command){
 
 function exitIfCliToolNotInstalled(toolName, detectionCommand, installLink){
     if(!commandExists(detectionCommand)){
-        events.alertListeners(Events.newLogEvent(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`))
+        // events.alertListeners(Events.newLogEvent(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`))
+        logMessage(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`)
         //console.log(`Could not detect ${toolName}. Please see ${installLink} for install instructions.`);
         process.exit(-1);
     }
@@ -45,20 +54,23 @@ function execParas(commandLineTemplate, params) {
         commandLine = commandLine.split("${"+paramName+"}").join(params[paramName]);// parse the string and replace the template variables
     }
 
-    events.alertListeners(Events.newLogEvent(commandLine));
+    //events.alertListeners(Events.newLogEvent(commandLine));
+    logMessage(commandLine);
 
     return new Promise((resolve, reject) => {
 
             execPromise(commandLine).
             then((result)=>{
                     if(result!= undefined && result!=null && result.length>0) {
-                        events.alertListeners(Events.newLogEvent(result));
+                        logMessage(result);
+                        //events.alertListeners(Events.newLogEvent(result));
                     }
                     resolve(result)})
                 .catch((error)=>{
-                    events.alertListeners(
-                            Events.newLogEvent(
-                                "Error During Execution").setObject(error));
+                    logMessage("Error During Execution " + error);
+                    // events.alertListeners(
+                    //         Events.newLogEvent(
+                    //             "Error During Execution").setObject(error));
                     reject(error)
                 });
         }
@@ -71,8 +83,9 @@ function execIfForceOrNew(force, outputFileName,
     if (typeof force === 'undefined') { force = false; }
 
     alertMessage = (message) =>{
-            events.alertListeners(Events.newLogEvent("execIfForceOrNew"));
-            events.alertListeners(Events.newLogEvent(message));
+            logMessage("execIfForceOrNew " + message);
+            // events.alertListeners(Events.newLogEvent("execIfForceOrNew"));
+            // events.alertListeners(Events.newLogEvent(message));
         }
 
     // do not run again if output already exists unless forced to run command
@@ -104,6 +117,5 @@ module.exports = {
     execParas,
     commandExists,
     exitIfCliToolNotInstalled,
-    execIfForceOrNew,
-    events
+    execIfForceOrNew
 }

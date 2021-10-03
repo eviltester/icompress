@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "ag-grid-community": "^26.0.0",
+    "node-ipc": "^10.1.0",
     "websocket": "^1.0.34"
   }
 }

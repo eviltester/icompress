@@ -12,8 +12,6 @@ let win = undefined;
 const FS = require('fs');
 
 const Events = require("../src/logging/Events");
-const events = new Events.Register();
-//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 
 function createWindow () {
     win = new BrowserWindow({
@@ -29,6 +27,47 @@ function createWindow () {
 
     win.loadFile('index.html')
 }
+
+
+const Ipc = require('node-ipc');
+
+
+const ipc = new Ipc.IPCModule();
+ipc.config.id = 'world';
+ipc.config.retry=1500;
+
+ipc.serve(
+    function(){
+        ipc.server.on(
+            'app.message',
+            function(data,socket){
+                ipc.log('ipc got a message from', (data.id), (data.message));
+                console.log('ipc console got a message from', (data.id), (data.message));
+                generalProgress(data.message);
+                // ipc.server.emit(
+                //     socket,
+                //     'app.message',
+                //     {
+                //         id      : ipc.config.id,
+                //         message : data.message+' world!'
+                //     }
+                // );
+
+                // if(messages.hello && messages.goodbye){
+                //     ipc.log('got all required events, telling clients to kill connection');
+                //     ipc.server.broadcast(
+                //         'kill.connection',
+                //         {
+                //             id:ipc.config.id
+                //         }
+                //     );
+                // }
+            }
+        );
+    }
+);
+
+ipc.server.start();
 
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit()

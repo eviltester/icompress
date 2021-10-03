@@ -17,10 +17,16 @@ const Persist = require("../persistence/imagePersistence");
 
 // todo: in the future allow custom commands to be added for images
 
-const Events = require("../logging/Events");
-const events = new Events.Register();
-//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
-events.includeInRegisterChain(ImageMagick.events);
+const IpcLogging = require('../app/ipcLoggerClient');
+
+const ipcLogger = new IpcLogging.IpcLoggerClient("compress")
+ipcLogger.connect();
+
+function logMessage(message){
+    //events.alertListeners(Events.newLogEvent(message));
+    //console.log(message);
+    ipcLogger.logMessage(message);
+}
 
 function ffmpegCompress(imageToFFmpeg, inputFileName, outputFileName, forceCompress) {
 
@@ -97,7 +103,8 @@ function compressTo(imageToCompress, outputFilePath, forceCompressFfmpeg, forceC
     const outputFileName = pathPrefix + outputFilePath + Path.sep + "ffmpeged-" + writtenImagePath.base;
     const compressedFileName = pathPrefix + outputFilePath + Path.sep + "compressed-" +imageToCompress.getOriginalFileName();
 
-    events.alertListeners(Events.newLogEvent("Starting Compress " + inputFileName));
+    logMessage("Starting Compress " + inputFileName);
+
 
     return new Promise((resolve, reject)=>{
 
@@ -134,5 +141,4 @@ module.exports={
     imageMagick: imageMagickCompress,
     compress: compress,
     compressTo: compressTo,
-    events: events
 }

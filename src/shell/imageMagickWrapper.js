@@ -2,12 +2,20 @@ const Shell = require("./commandLineExec");
 const FS = require('fs');
 const Path = require('path');
 
+const IpcLogging = require('../app/ipcLoggerClient');
 
-const Events = require("../logging/Events");
-const events = new Events.Register();
+const ipcLogger = new IpcLogging.IpcLoggerClient("compress")
+ipcLogger.connect();
 
-//events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
-events.includeInRegisterChain(Shell.events);
+function logMessage(message){
+    //events.alertListeners(Events.newLogEvent(message));
+    //console.log(message);
+    ipcLogger.logMessage(message);
+}
+
+
+
+
 
 // This just wraps imageMagick
 
@@ -102,7 +110,8 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
 
             Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
             then((details)=>{
-                    events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
+                    logMessage("file size test on " + outputFileName);
+                    //events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
                     //delete if output length is greater than input
                     details.commandDetails.status="COMPRESSED";
                     // todo: add a compression amount and %age
@@ -110,11 +119,14 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                         try{
                             FS.unlinkSync(outputFileName);
                             details.commandDetails.status = "DELETED";
-                            events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
-                                " >= " + originalFileSizeInBytes + " - " + outputFileName));
+                            logMessage("DELETED: " + details.commandDetails.outputFileSize +
+                                " >= " + originalFileSizeInBytes + " - " + outputFileName)
+                            // events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
+                            //     " >= " + originalFileSizeInBytes + " - " + outputFileName));
 
                         }catch(err){
-                            events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
+                            logMessage("Error deleting " + outputFileName);
+                            //events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
                             throw(err);
                         }
                     }
@@ -132,6 +144,5 @@ module.exports={
     commands: commands,
     compressUsingCommand: imageMagickCompressCommand,
     compress: imageMagickCompress,
-    applicableCommands : applicableCommands,
-    events: events
+    applicableCommands : applicableCommands
 }

@@ -1,5 +1,6 @@
 const HTTP = require("../http/httpWrapper");
 const Persist = require("../persistence/imagePersistence");
+const IpcLogging = require('../app/ipcLoggerClient');
 
 function PageStatesEnum(){
     this.INITIALISED = "INITIALISED";
@@ -19,6 +20,7 @@ class Page{
     #dom;
     #errorReport;
     #imageUrls;
+    #ipcLogger;
 
     constructor(pageUrl) {
         this.#url = pageUrl;
@@ -26,6 +28,9 @@ class Page{
         this.#states = [States.INITIALISED];
         this.#errorReport = "";
         this.#imageUrls= [];
+
+        this.#ipcLogger = new IpcLogging.IpcLoggerClient("page.js")
+        this.#ipcLogger.connect();
 
         this.toJSON = function() {
             return {
@@ -54,12 +59,17 @@ class Page{
         this.#states.push(newState);
     }
 
+    logMessage(message){
+        console.log(message);
+        this.#ipcLogger.logMessage(message);
+    }
+
     getDom() {
-        console.log("getting page");
+        this.logMessage("getting page " + this.#url);
         return new Promise((resolve, reject) => {
             HTTP.getDomFromUrl(this.#url).
             then((dom)=>{
-                console.log("got page")
+                this.logMessage("got page")
                 this.#state=States.FOUND;
                 this.#dom =dom;
                 resolve(this);}).
