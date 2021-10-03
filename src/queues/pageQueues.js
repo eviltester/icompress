@@ -1,6 +1,6 @@
 const Queues = require("./qManager");
-const Persist = require("./imagePersistence");
-const Page = require("./page");
+const Persist = require("../persistence/imagePersistence");
+const Page = require("../domain/page");
 
 function PageQueueNamesEnum(){
     this.READY_TO_SCAN = "READY_TO_SCAN";
@@ -29,7 +29,7 @@ class PageQueueManager{
             Persist.createDirForUrlHostname(page.getUrl()).
             then(msg =>
                 this.pageQueues.addToQueue(page, QueueNames.READY_TO_SCAN)
-            ).catch(error => throw error);
+            ).catch((error) => {throw error});
 
         }).catch((error)=>{
             this.pageQueues.addToQueue(page, QueueNames.ERROR_PROCESSING_PAGES);

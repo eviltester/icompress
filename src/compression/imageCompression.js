@@ -9,15 +9,15 @@ const FS = require('fs');
 // https://www.npmjs.com/package/animated-gif-detector
 const AnimatedGifDetector = require('animated-gif-detector');
 
-const ImageDetails = require("../src/domain/imageDetails.js");
+const ImageDetails = require("../domain/imageDetails");
 const ImageStates = ImageDetails.States;
-const FFMPEG = require("./ffmpegWrapper.js");
-const ImageMagick = require("./imageMagickWrapper.js");
-const Persist = require("./imagePersistence");
+const FFMPEG = require("../shell/ffmpegWrapper");
+const ImageMagick = require("../shell/imageMagickWrapper");
+const Persist = require("../persistence/imagePersistence");
 
 // todo: in the future allow custom commands to be added for images
 
-const Events = require("./Events.js");
+const Events = require("../logging/Events");
 const events = new Events.Register();
 //events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 events.includeInRegisterChain(ImageMagick.events);

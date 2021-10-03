@@ -1,4 +1,4 @@
-const Shell = require("./commandLineExec.js");
+const Shell = require("./commandLineExec");
 const FS = require('fs');
 
 // This just wraps ffmpeg

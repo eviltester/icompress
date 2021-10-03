@@ -5,8 +5,8 @@ const path = require('path')
 
 const ImageDetails = require("../domain/imageDetails");
 const ImageStates = ImageDetails.States;
-const Compress = require("../../bin/imageCompression");
-const Persist = require("../../bin/imagePersistence");
+const Compress = require("../compression/imageCompression");
+const Persist = require("../persistence/imagePersistence");
 const FS = require('fs');
 const Events = require("../../bin/events")
 

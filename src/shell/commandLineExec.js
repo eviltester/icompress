@@ -2,7 +2,7 @@ const exec = require('child_process').exec;
 const execSync = require('child_process').execSync;
 const FS = require('fs');
 
-const Events = require("./events.js");
+const Events = require("../logging/events");
 const events = new Events.Register();
 //events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 

@@ -5,7 +5,7 @@ const FS = require('fs');
 const Url = require('url').URL;
 const Path = require('path');
 
-const ImageDetails = require("../src/domain/imageDetails.js");
+const ImageDetails = require("../domain/imageDetails");
 
 /*
     Directory/File Management
@@ -42,6 +42,9 @@ function createDir(dir){
 
                     resolve("created: "  + dir);
                 })
+            }
+            if(stats.isDirectory()){
+                resolve("directory exists: " + dir);
             }
         })
     })

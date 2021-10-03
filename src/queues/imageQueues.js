@@ -4,11 +4,11 @@
 // if it didn't then queues would be renamed to images
 
 const Queues = require("./qManager");
-const ImageDetails = require("../src/domain/imageDetails.js");
-const ImageHTTP = require("./imageHttp");
+const ImageDetails = require("../domain/imageDetails.js");
+const ImageHTTP = require("../http/imageHttp");
 const ImageStates = ImageDetails.States;
-const CompressImage = require("./imageCompression");
-const Persist = require("./imagePersistence");
+const CompressImage = require("../compression/imageCompression");
+const Persist = require("../persistence/imagePersistence");
 
 function ImageQueueNamesEnum(){
     this.IMAGES_TO_SCAN = "IMAGES_TO_SCAN"; // inmage to get header and see if we should scan

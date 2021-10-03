@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const Shell = require("./commandLineExec.js");
+const Shell = require("../src/shell/commandLineExec");
 
 // http://yargs.js.org/
 const yargs = require("yargs");
@@ -11,7 +11,7 @@ const FS = require('fs');
 //https://nodejs.org/api/path.html
 const Path = require('path');
 
-const HTTP = require("./httpWrapper.js");
+const HTTP = require("../src/http/httpWrapper");
 
 //https://nodejs.org/api/timers.html
 const { setInterval } = require("timers");
@@ -19,14 +19,16 @@ const { setInterval } = require("timers");
 // https://nodejs.org/api/url.html
 const Url = require('url').URL;
 
-const PageQueues = require("./pageQueues.js");
-const ImageQueues = require("./imageQueues.js");
-const ImageDetails = require("../src/domain/imageDetails.js");
+const PageQueues = require("../src/queues/pageQueues");
+const ImageQueues = require("../src/queues/imageQueues.js");
+const ImageDetails = require("../src/domain/imageDetails");
 const ImageStates = ImageDetails.States;
 
-const Persist = require("./imagePersistence");
+const Persist = require("../src/persistence/imagePersistence");
 
-const Compress = require("./imageCompression");
+const Compress = require("../src/compression/imageCompression");
+
+const QueueBasedScanner = require("../src/app/queueBasedScanner");
 
 
 
@@ -98,8 +100,20 @@ if(options.forceactions){
     }
 }
 
-const pageQManager = new PageQueues.PageQueueManager();
-const imageQManager = new ImageQueues.ImageQueueManager(forceactions);
+
+// if we are given a url then create a root folder using the domain name
+let rootFolder = "";
+if(options.pageurl){
+    createDirForUrl(options.pageurl);
+}
+
+function createDirForUrl(aUrl){
+    rootFolder = Persist.createDirForUrlHostname(aUrl);
+}
+
+
+const scanner = new QueueBasedScanner.Scanner(rootFolder, forceactions);
+
 
 // process a single file
 if(options.inputname){
@@ -127,15 +141,7 @@ if(options.inputname){
 }
 
 
-// if we are given a url then create a root folder using the domain name
-let rootFolder = "";
-if(options.pageurl){
-    createDirForUrl(options.pageurl);
-}
 
-function createDirForUrl(aUrl){
-    rootFolder = Persist.createDirForUrlHostname(aUrl);
-}
 
 /*
     Started
@@ -145,7 +151,7 @@ function createDirForUrl(aUrl){
 // get the source and find all images
 // get all images and download those which are > 50K based on header to a folder
 if(options.pageurl){
-    pageQManager.queueUpThePageURL(options.pageurl);
+    scanner.addPageToScan(options.pageurl);
 }
 
 // given a sitemap add all the pages to the Q
@@ -153,7 +159,10 @@ if(options.pageurl){
 if(options.xmlsitemap){
     sitemap.fetch(options.xmlsitemap).
     then(function(sites) {
-        sites.sites.forEach((siteUrl)=>pageQManager.queueUpThePageURL(siteUrl));
+        sites.sites.forEach((siteUrl)=> {
+            scanner.addPageToScan(options.pageurl);
+            }
+        );
     }).catch((error)=> {
         console.log("Error Reading Sitemap from " + options.xmlsitemap);
     console.log(error);
@@ -167,8 +176,8 @@ let nothingToDoCount=0;
 const quitIfQueuesAreEmpty = ()=>{
     let shouldIQuit = false;
 
-    if(imageQManager.allProcessingQueuesAreEmpty() &&
-        pageQManager.allProcessingQueuesAreEmpty()
+    if(
+        scanner.queuesAreEmpty()
     ){
         shouldIQuit= true;
         nothingToDoCount++;
@@ -183,20 +192,20 @@ const quitIfQueuesAreEmpty = ()=>{
     if(nothingToDoCount<5){
         console.log("Page Queues");
         console.log("-----------");
-        console.log(pageQManager.queues().reportOnQueueLengths());
+        console.log(scanner.getPageQManager().queues().reportOnQueueLengths());
         console.log("Image Queues");
         console.log("------------");
-        console.log(imageQManager.queues().reportOnQueueLengths());
+        console.log(scanner.getImageQManager().queues().reportOnQueueLengths());
         return;
     }
 
     if(shouldIQuit){
-        console.log(pageQManager.queues().reportOnQueueLengths());
-        console.log(pageQManager.queues().reportOnAllQueueContents())
+        console.log(scanner.getPageQManager().queues().reportOnQueueLengths());
+        console.log(scanner.getPageQManager().queues().reportOnAllQueueContents())
 
-        console.log(imageQManager.queues().reportOnQueueLengths());
-        console.log(imageQManager.queues().reportOnAllQueueContents());
-        imageQManager.outputImageJsonFiles();
+        console.log(scanner.getImageQManager().queues().reportOnQueueLengths());
+        console.log(scanner.getImageQManager().queues().reportOnAllQueueContents());
+        scanner.getImageQManager().outputImageJsonFiles();
         process.exit(0); // OK I Quit
     }
 }
@@ -204,22 +213,6 @@ const quitIfQueuesAreEmpty = ()=>{
 
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
 
-
-
-// Page Queue Intervals
-const createImageFromUrl = (anImageUrl, aPageUrl)=>{
-    imageQManager.createImageFromUrl(anImageUrl, aPageUrl);
-}
-pageQManager.startPageProcessingQueue(createImageFromUrl, 100);
-//const reportOnPageQsInterval = setInterval(()=>{console.log(pageQManager.queues().reportOnQueueLengths())},500);
-
-
-// Image Queue Intervals
-imageQManager.startCreateFolderStructureQProcessing(rootFolder, 100);
-imageQManager.startFilterImagesQProcessing(50, 500);
-imageQManager.startDownloadImageQProcessing(forceactions.download,500);
-imageQManager.startCompressImageQProcessing(forceactions.compressffmpeg, forceactions.compressmagick, 1000);
-//const reportOnImageQsInterval = setInterval(()=>{console.log(imageQManager.queues().reportOnQueueLengths())},500);
-
+scanner.startQueueProcessing();
 
 

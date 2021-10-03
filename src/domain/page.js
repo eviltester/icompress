@@ -1,5 +1,5 @@
-const HTTP = require("./httpWrapper");
-const Persist = require("./imagePersistence");
+const HTTP = require("../http/httpWrapper");
+const Persist = require("../persistence/imagePersistence");
 
 function PageStatesEnum(){
     this.INITIALISED = "INITIALISED";
@@ -55,9 +55,11 @@ class Page{
     }
 
     getDom() {
+        console.log("getting page");
         return new Promise((resolve, reject) => {
             HTTP.getDomFromUrl(this.#url).
             then((dom)=>{
+                console.log("got page")
                 this.#state=States.FOUND;
                 this.#dom =dom;
                 resolve(this);}).

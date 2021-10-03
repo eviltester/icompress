@@ -3,15 +3,15 @@ const { ipcMain } = require('electron')
 
 const path = require('path')
 
-const ImageDetails = require("../src/domain/imageDetails.js");
+const ImageDetails = require("../src/domain/imageDetails");
 const ImageStates = ImageDetails.States;
-//const Compress = require("../bin/imageCompression");
-const Persist = require("../bin/imagePersistence");
+//const Compress = require("../src/compression/imageCompression");
+const Persist = require("../src/persistence/imagePersistence");
 let win = undefined;
 
 const FS = require('fs');
 
-const Events = require("../bin/Events.js");
+const Events = require("../src/logging/Events");
 const events = new Events.Register();
 //events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
 

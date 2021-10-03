@@ -1,9 +1,9 @@
-const Shell = require("./commandLineExec.js");
+const Shell = require("./commandLineExec");
 const FS = require('fs');
 const Path = require('path');
 
 
-const Events = require("./Events.js");
+const Events = require("../logging/Events");
 const events = new Events.Register();
 
 //events.registerListener("console.log", (eventDetails)=>{console.log(eventDetails)});
