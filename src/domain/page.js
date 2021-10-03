@@ -60,7 +60,7 @@ class Page{
     }
 
     logMessage(message){
-        console.log(message);
+        //console.log(message);
         this.#ipcLogger.logMessage(message);
     }
 

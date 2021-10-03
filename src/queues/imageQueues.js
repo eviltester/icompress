@@ -220,6 +220,13 @@ class ImageQueueManager{
     stopDownloadImageQProcessing(){
         clearInterval(this.downloadImagesQInterval);
     }
+
+    stopAllQueues(){
+        this.stopCompressImageQProcessing();
+        this.stopCreateFolderStructureQProcessing();
+        this.stopDownloadImageQProcessing();
+        this.stopFilterImagesQProcessing();
+    }
 }
 
 module.exports = {

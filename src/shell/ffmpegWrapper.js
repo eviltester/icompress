@@ -1,8 +1,6 @@
 const Shell = require("./commandLineExec");
-const FS = require('fs');
 
 // This just wraps ffmpeg
-
 // add config to experiment with the different attributes for compression e.g. fps values, scale and resize
 // https://superuser.com/questions/556029/how-do-i-convert-a-video-to-gif-using-ffmpeg-with-reasonable-quality
 function ffmpegCompress(inputFileName, outputFileName, forceCompress){

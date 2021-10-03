@@ -8,8 +8,6 @@ const ImageStates = ImageDetails.States;
 const Compress = require("../compression/imageCompression");
 const Persist = require("../persistence/imagePersistence");
 const FS = require('fs');
-const Events = require("../logging/events")
-
 
 const IpcLogging = require('../app/ipcLoggerClient');
 
@@ -17,20 +15,16 @@ const ipcLogger = new IpcLogging.IpcLoggerClient("compress")
 ipcLogger.connect();
 
 function logMessage(message){
-    //console.log(message);
     ipcLogger.logMessage(message);
 }
 
 function generalProgress(eventMessage){
-    //parentPort.postMessage({progress: eventMessage})
     logMessage(eventMessage);
 }
 
 function imageUpdate(image){
     parentPort.postMessage({ imageUpdate: JSON.parse(JSON.stringify( image))})
 }
-
-//Compress.events.registerListener("general-update", generalProgress);
 
 function compressInSitu(anInputFile) {
     return compressToFolder(anInputFile, undefined);
@@ -49,7 +43,7 @@ function compressToFolder(inputFile, outputFolder){
 
     // check file exists
     FS.stat(inputFile, (err, stats)=>{
-        if(!err){
+        if(stats!=undefined){
             inputImage.setContentLength(stats.size);
 
             // imageQManager.addImageToCompressQueue(inputImage);

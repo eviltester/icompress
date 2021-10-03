@@ -10,7 +10,6 @@ class QManager{
         }
     }
 
-
     findFirstInQWhere(queueName, matchingFunc){
 
         const qToUse = this.Qs[queueName];

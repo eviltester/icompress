@@ -2,11 +2,9 @@ const { app, BrowserWindow, dialog } = require('electron')
 const { ipcMain } = require('electron')
 
 const path = require('path')
+const QueueBasedScanner = require("../src/app/queueBasedScanner");
+const Sitemapper = require('sitemapper');
 
-const ImageDetails = require("../src/domain/imageDetails");
-const ImageStates = ImageDetails.States;
-//const Compress = require("../src/compression/imageCompression");
-const Persist = require("../src/persistence/imagePersistence");
 let win = undefined;
 
 const FS = require('fs');
@@ -227,4 +225,99 @@ ipcMain.on('app:compress-images-to', (event, inputFile, outputFolder) => {
         }).catch(errorMessage =>{
            console.log(errorMessage);
         });
+})
+
+
+
+
+
+
+/*
+
+    Queue Processing Functionality
+
+ */
+
+
+let nothingToDoCount=0;
+let quitWhenNothingToDoInterval = undefined;
+let scanner = undefined;
+
+const quitIfQueuesAreEmpty = ()=>{
+    let shouldIQuit = false;
+
+    if(
+        scanner.queuesAreEmpty()
+    ){
+        shouldIQuit= true;
+        nothingToDoCount++;
+    }else{
+        nothingToDoCount=0;
+    }
+
+    console.log("nothing to do " + nothingToDoCount);
+
+    // add a delay before quiting
+    // todo: add a config param for TimesToCheckQueueBeforeExiting
+    if(nothingToDoCount<5){
+        console.log("Page Queues");
+        console.log("-----------");
+        console.log(scanner.getPageQManager().queues().reportOnQueueLengths());
+        console.log("Image Queues");
+        console.log("------------");
+        console.log(scanner.getImageQManager().queues().reportOnQueueLengths());
+        return;
+    }
+
+    if(shouldIQuit){
+        console.log(scanner.getPageQManager().queues().reportOnQueueLengths());
+        console.log(scanner.getPageQManager().queues().reportOnAllQueueContents())
+
+        console.log(scanner.getImageQManager().queues().reportOnQueueLengths());
+        console.log(scanner.getImageQManager().queues().reportOnAllQueueContents());
+        scanner.getImageQManager().outputImageJsonFiles();
+        scanner.stopQueueProcessing();
+        clearInterval(quitWhenNothingToDoInterval);
+    }
+}
+
+
+
+
+ipcMain.on('app:process-sitemap-to', (event, sitemapXml, outputFolder) => {
+
+    generalProgress("processing: " + sitemapXml);
+    generalProgress("outputFolder: " + outputFolder);
+
+    if (!outputFolder || outputFolder.trim().length==0) {
+        generalProgress("Require an output file to save to");
+        return;
+    }
+
+    const forceactions = {download: false, compressffmpeg: false, compressmagick:false};
+
+    // todo: put this in a worker thread, then add the thread to index.js
+    // todo: fix path handling as it loads in relative folder for outputFolder
+    scanner = new QueueBasedScanner.Scanner(outputFolder, forceactions);
+
+    // todo: for some reason this does not work in electron
+    const sitemap = new Sitemapper({url: sitemapXml, debug:true});
+
+    sitemap.fetch().
+    then(function(sites) {
+        console.log(sitemap);
+        console.log(sites);
+        sites.sites.forEach((siteUrl)=> {
+                scanner.addPageToScan(siteUrl);
+            }
+        );
+        quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
+        scanner.startQueueProcessing();
+    }).catch((error)=> {
+        generalProgress("Error Reading Sitemap from " + options.xmlsitemap);
+        generalProgress(error);
+    });
+
+    console.log("sitemap");
+
 })

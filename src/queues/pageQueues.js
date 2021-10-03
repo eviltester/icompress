@@ -22,7 +22,6 @@ class PageQueueManager{
 
     queueUpThePageURL(aUrl){
         const page = new Page.Page(aUrl);
-        // console.log(aUrl)
 
         page.getDom().
         then((page)=>{
@@ -33,8 +32,6 @@ class PageQueueManager{
 
         }).catch((error)=>{
             this.pageQueues.addToQueue(page, QueueNames.ERROR_PROCESSING_PAGES);
-            // console.log("processing error");
-            // console.log(error);
         });
     }
 
@@ -90,6 +87,10 @@ class PageQueueManager{
 
     stopPageProcessingQueue(){
         clearInterval(this.pageProcessingQInterval);
+    }
+
+    stopAllQueues(){
+        this.stopPageProcessingQueue();
     }
 
 }

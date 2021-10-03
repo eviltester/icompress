@@ -8,12 +8,8 @@ const ipcLogger = new IpcLogging.IpcLoggerClient("compress")
 ipcLogger.connect();
 
 function logMessage(message){
-    //events.alertListeners(Events.newLogEvent(message));
-    //console.log(message);
     ipcLogger.logMessage(message);
 }
-
-
 
 
 
@@ -60,11 +56,7 @@ const commands = [
 // todo: allow configuration and profiles for image magick
 
 function imageMagickCompress(inputFileName, outputFileName, forceCompress){
-
-    const imagemagick = 'magick convert ${inputFileName} -strip +dither -colors 32 -depth 8 ${outputFileName}';
-
-    const commandDetails = {inputFileName: inputFileName, outputFileName: outputFileName};
-    
+    // use the default at postion 0
     return imageMagickCompressCommand(commands[0], inputFileName, outputFileName, forceCompress);
 }
 
@@ -102,7 +94,7 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
 
     return new Promise((resolve, reject)=>{
         FS.stat(inputFileName, (err, stats)=>{
-            if(err){
+            if(stats==undefined){
                 reject(err);
             }
 
@@ -111,7 +103,6 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
             Shell.execIfForceOrNew(forceCompress, outputFileName, command.name, command.template, commandDetails).
             then((details)=>{
                     logMessage("file size test on " + outputFileName);
-                    //events.alertListeners(Events.newLogEvent("file size test on " + outputFileName));
                     //delete if output length is greater than input
                     details.commandDetails.status="COMPRESSED";
                     // todo: add a compression amount and %age
@@ -121,12 +112,8 @@ function imageMagickCompressCommand(command, inputFileName, outputFileName, forc
                             details.commandDetails.status = "DELETED";
                             logMessage("DELETED: " + details.commandDetails.outputFileSize +
                                 " >= " + originalFileSizeInBytes + " - " + outputFileName)
-                            // events.alertListeners(Events.newLogEvent("DELETED: " + details.commandDetails.outputFileSize +
-                            //     " >= " + originalFileSizeInBytes + " - " + outputFileName));
-
                         }catch(err){
                             logMessage("Error deleting " + outputFileName);
-                            //events.alertListeners(Events.newLogEvent("Error deleting " + outputFileName));
                             throw(err);
                         }
                     }

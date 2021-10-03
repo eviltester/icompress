@@ -41,6 +41,11 @@ class Scanner{
 
     }
 
+    stopQueueProcessing(){
+        this.imageQManager.stopAllQueues();
+        this.pageQManager.stopAllQueues();
+    }
+
     getPageQManager(){
         return this.pageQManager;
     }

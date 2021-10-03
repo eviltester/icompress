@@ -26,15 +26,18 @@ function createDir(dir){
     return new Promise((resolve, reject)=>{
 //        console.log("creating: "  + dir);
         FS.stat(dir,(err,stats)=>{
-            if(err){
-                reject(err);
+            let isFile=false;
+            let isDirectory=false;
+            if(stats!=undefined){
+                isFile= stats.isFile();
+                isDirectory=stats.isDirectory();
             }
 
-            if(stats.isFile()){
+            if(isFile){
                 reject("File exists where you want to create directory");
             }
 
-            if(!stats.isDirectory()){
+            if(!isDirectory){
                 FS.mkdir(dir, { recursive: true }, (err)=>{
                     if(err){
                         reject(err);
@@ -43,7 +46,7 @@ function createDir(dir){
                     resolve("created: "  + dir);
                 })
             }
-            if(stats.isDirectory()){
+            if(isDirectory){
                 resolve("directory exists: " + dir);
             }
         })

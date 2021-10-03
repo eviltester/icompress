@@ -78,6 +78,19 @@
     <span class="loading" style="display:none"></span>
     <button id="compresssinglefileTo">Compress Image To Output Folder</button>
 
+    <div>
+        <h2>Site Map Config</h2>
+        <label for="sitemapurl">Sitemap.xml Url</label>
+        <input type="url" id="sitemapurl"/>
+        <button id="processitemap">Process Sitemap</button>
+    </div>
+    <div>
+        <h2>Page URL Config</h2>
+        <label for="pageurl">Sitemap.xml Url</label>
+        <input type="url" id="pageurl"/>
+        <button id="processpageurl">Process Page Url</button>
+    </div>
+
 
 
 </div>
@@ -99,7 +112,7 @@
         // specify the columns for the log
         const logColumnDefs = [
         { field: "timestamp", suppressSizeToFit: true },
-        { field: "message", wrapText:true}
+        { field: "message", wrapText:true, autoHeight: true}
         ];
 
         // let the grid know which columns and what data to use
@@ -188,6 +201,10 @@
 
         compressImageInSitu : (inputFileName) => {
             ipcRenderer.send('app:compress-images-insitu', inputFileName);
+        },
+
+        processSitemapTo : (sitemapUrl, outputFolder)=>{
+            ipcRenderer.send('app:process-sitemap-to', sitemapUrl, outputFolder);
         }
     }
 
@@ -240,6 +257,27 @@
         start.compressImagesTo(inputFileName, outputFolder)
     };
 
+
+    document.getElementById( 'processitemap' ).onclick = function() {
+
+        const sitemapUrl = document.getElementById("sitemapurl").value;
+        const outputFolder = document.getElementById("outputfolder").innerText;
+
+        if(sitemapUrl.trim().length==0){
+            alert("You must input a sitemap url to process");
+            return;
+        }
+
+        if(outputFolder.trim().length==0){
+            alert("You must choose an output folder to save to");
+            return;
+        }
+
+        startLoadingSpinner();
+        logGridOptions.api.setRowData([]);
+
+        start.processSitemapTo(sitemapUrl, outputFolder)
+    }
 
     function logMessages(messages){
         logGridOptions.api.applyTransactionAsync({
@@ -316,6 +354,7 @@
 
         }
 
+        console.log("apply transaction");
         imageGridOptions.api.applyTransactionAsync({
             add: imageDataRows
         }, ()=>{
@@ -335,17 +374,15 @@
                 ]
             });
         });
-
-
     }
 
 window.onresize = () => {
-    // imageGridOptions.api.sizeColumnsToFit();
-    // imageGridOptions.columnApi.autoSizeColumn("status");
-    // imageGridOptions.columnApi.autoSizeColumn("outputSize")
-    // imageGridOptions.columnApi.autoSizeColumn("compression")
-    // imageGridOptions.columnApi.autoSizeColumn("command")
-    // logGridOptions.api.sizeColumnsToFit();
+    imageGridOptions.api.sizeColumnsToFit();
+    imageGridOptions.columnApi.autoSizeColumn("status");
+    imageGridOptions.columnApi.autoSizeColumn("outputSize")
+    imageGridOptions.columnApi.autoSizeColumn("compression")
+    imageGridOptions.columnApi.autoSizeColumn("command")
+    logGridOptions.api.sizeColumnsToFit();
 }
 
 </script>

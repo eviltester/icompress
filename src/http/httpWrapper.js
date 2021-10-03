@@ -37,12 +37,17 @@ function downloadFile(fromUrl, toFilePath, forceDownload) {
 
     return new Promise((resolve, reject)=>{
         FS.stat(toFilePath, (err,stats)=>{
-            if(err){
+            isFile=false;
+            if(stats!=undefined){
+                isFile=stats.isFile();
+            }
+
+            if(isFile){
                 logMessage("FILE EXISTS: skipping download for " + toFilePath);
                 resolve({});
             }
 
-            if(!stats.isFile()){
+            if(!isFile){
                 promiseToDownloadFile(fromUrl, toFilePath).
                 then(response => resolve(response)).
                 catch(error => reject(error));

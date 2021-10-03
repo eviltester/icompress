@@ -22,11 +22,12 @@
   },
   "homepage": "https://github.com/eviltester/icompress#readme",
   "devDependencies": {
-    "electron": "^14.0.0"
+    "electron": "^15.0.0"
   },
   "dependencies": {
-    "ag-grid-community": "^26.0.0",
+    "ag-grid-community": "^26.1.0",
     "node-ipc": "^10.1.0",
+    "sitemapper": "^3.1.15",
     "websocket": "^1.0.34"
   }
 }

@@ -5,22 +5,12 @@ const Shell = require("../src/shell/commandLineExec");
 // http://yargs.js.org/
 const yargs = require("yargs");
 
-// https://nodejs.org/api/fs.html
-const FS = require('fs');
-
 //https://nodejs.org/api/path.html
 const Path = require('path');
-
-const HTTP = require("../src/http/httpWrapper");
 
 //https://nodejs.org/api/timers.html
 const { setInterval } = require("timers");
 
-// https://nodejs.org/api/url.html
-const Url = require('url').URL;
-
-const PageQueues = require("../src/queues/pageQueues");
-const ImageQueues = require("../src/queues/imageQueues.js");
 const ImageDetails = require("../src/domain/imageDetails");
 const ImageStates = ImageDetails.States;
 
@@ -210,7 +200,7 @@ if(options.xmlsitemap){
     sitemap.fetch(options.xmlsitemap).
     then(function(sites) {
         sites.sites.forEach((siteUrl)=> {
-            scanner.addPageToScan(options.pageurl);
+            scanner.addPageToScan(siteUrl);
             }
         );
     }).catch((error)=> {
@@ -222,7 +212,6 @@ if(options.xmlsitemap){
 // todo: add to ExitBasedOnQueues class
 let nothingToDoCount=0;
 
-// todo: include page processing queues here too
 const quitIfQueuesAreEmpty = ()=>{
     let shouldIQuit = false;
 
@@ -262,11 +251,6 @@ const quitIfQueuesAreEmpty = ()=>{
 
 
 const quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
-
-
-
-
-
 
 
 scanner.startQueueProcessing();
