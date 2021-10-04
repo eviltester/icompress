@@ -34,6 +34,8 @@ const ipc = new Ipc.IPCModule();
 ipc.config.id = 'world';
 ipc.config.retry=1500;
 
+// todo: can messages have other properties e.g. like .id and we add .msgtype? do objects get serialised automatically into message?
+
 ipc.serve(
     function(){
         ipc.server.on(

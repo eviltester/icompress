@@ -92,7 +92,7 @@ class Page{
             }
             if (!imageUrl.includes(":/")) {
                 // image is relative
-                imageUrl = Persist.combineIntoPath(this.#url, divider, imageUrl);
+                imageUrl = Persist.combineIntoUrlPath(this.#url, divider, imageUrl);
                 //imageUrl = this.#url + divider + imageUrl;
             }
             imageUrls.push(imageUrl);

@@ -54,6 +54,11 @@ function createDir(dir){
 }
 
 function combineIntoPath(...pathParts) {
+    return Path.join(...pathParts);
+}
+
+function combineIntoUrlPath(...pathParts) {
+
     let combinedPath ="";
     let sep = "";
     for (let i=0; i<pathParts.length; i++) {
@@ -68,7 +73,7 @@ function combineIntoPath(...pathParts) {
                 partToAdd = partToAdd.substring(1);
             }
             combinedPath = combinedPath + sep + partToAdd;
-            sep = Path.sep;
+            sep = "/";
 
         }
     }
@@ -98,7 +103,9 @@ function createFolderStructureForImage(image, root) {
             image.setOriginalFileName(fileName);
 
             //console.log("creating dir " + dir);
-
+            console.log(Path.join(image.getRootFolder(),
+                dir,
+                image.getOriginalFileName()));
             const fileDirPath = combineIntoPath(
                                     image.getRootFolder(),
                                     dir,
@@ -145,5 +152,6 @@ module.exports ={
     outputImageJsonFile,
     outputImageJsonFiles,
     combineIntoPath,
-    createDirForUrlHostname
+    createDirForUrlHostname,
+    combineIntoUrlPath
 }
