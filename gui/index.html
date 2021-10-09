@@ -46,6 +46,10 @@
 <h1>Image Compression</h1>
 <div>
     <!-- TODO: (Compress image to folder) button, choose input file and output folder, then have an 'replace original' button next to output files to copy compressed files-->
+    <div class="output-config">
+        <h2>Output Destination</h2>
+        <p><button id="chooseOutputFolder">Choose</button><label for="outputfolder">Output Folder:</label><span id='outputfolder' ></span></p>
+    </div>
     <div class="compressionImagesContainer">
         <div id="compressionConfig">
             <div>
@@ -57,10 +61,6 @@
                 <p><a id="inputFileLink" target="_blank"></a></p>
                 <img id="fileToCompress" style="float:left" width="200px" height="auto" style="display:none" />
 
-            </div>
-
-            <div>
-                <p><button id="chooseOutputFolder">Choose</button><label for="outputfolder">Output Folder:</label><span id='outputfolder' ></span></p>
             </div>
         </div>
         <div id="compressedImageDetails" style="display:none">
@@ -86,7 +86,7 @@
     </div>
     <div>
         <h2>Page URL Config</h2>
-        <label for="pageurl">Sitemap.xml Url</label>
+        <label for="pageurl">Page Url</label>
         <input type="url" id="pageurl"/>
         <button id="processpageurl">Process Page Url</button>
     </div>
@@ -111,8 +111,12 @@
 
         // specify the columns for the log
         const logColumnDefs = [
-        { field: "timestamp", suppressSizeToFit: true },
-        { field: "message", wrapText:true, autoHeight: true}
+        { field: "timestamp", suppressSizeToFit: true, cellStyle: {'line-height': '1.5em'}},
+        {   field: "message",
+            wrapText:true,
+            autoHeight: true,
+            cellStyle: {'line-height': '1.5em', 'word-break': 'normal', 'overflow-wrap': 'break-word'},
+        }
         ];
 
         // let the grid know which columns and what data to use
@@ -205,6 +209,10 @@
 
         processSitemapTo : (sitemapUrl, outputFolder)=>{
             ipcRenderer.send('app:process-sitemap-to', sitemapUrl, outputFolder);
+        },
+
+        processPageTo : (pageUrl, outputFolder)=>{
+            ipcRenderer.send('app:process-page-to', pageUrl, outputFolder);
         }
     }
 
@@ -278,6 +286,27 @@
 
         start.processSitemapTo(sitemapUrl, outputFolder)
     }
+
+        document.getElementById( 'processpageurl' ).onclick = function() {
+
+            const pageUrl = document.getElementById("pageurl").value;
+            const outputFolder = document.getElementById("outputfolder").innerText;
+
+            if(pageUrl.trim().length==0){
+                alert("You must input a page url to process");
+                return;
+            }
+
+            if(outputFolder.trim().length==0){
+                alert("You must choose an output folder to save to");
+                return;
+            }
+
+            startLoadingSpinner();
+            logGridOptions.api.setRowData([]);
+
+            start.processPageTo(pageUrl, outputFolder)
+        }
 
     function logMessages(messages){
         logGridOptions.api.applyTransactionAsync({

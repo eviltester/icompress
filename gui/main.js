@@ -302,7 +302,6 @@ ipcMain.on('app:process-sitemap-to', (event, sitemapXml, outputFolder) => {
     // todo: fix path handling as it loads in relative folder for outputFolder
     scanner = new QueueBasedScanner.Scanner(outputFolder, forceactions);
 
-    // todo: for some reason this does not work in electron
     const sitemap = new Sitemapper({url: sitemapXml, debug:true});
 
     sitemap.fetch().
@@ -321,5 +320,27 @@ ipcMain.on('app:process-sitemap-to', (event, sitemapXml, outputFolder) => {
     });
 
     console.log("sitemap");
+
+})
+
+ipcMain.on('app:process-page-to', (event, pageUrl, outputFolder) => {
+
+    generalProgress("processing: " + pageUrl);
+    generalProgress("outputFolder: " + outputFolder);
+
+    if (!outputFolder || outputFolder.trim().length==0) {
+        generalProgress("Require an output file to save to");
+        return;
+    }
+
+    const forceactions = {download: false, compressffmpeg: false, compressmagick:false};
+
+    // todo: put this in a worker thread, then add the thread to index.js
+    // todo: fix path handling as it loads in relative folder for outputFolder
+    scanner = new QueueBasedScanner.Scanner(outputFolder, forceactions);
+
+    scanner.addPageToScan(pageUrl);
+    quitWhenNothingToDoInterval = setInterval(()=>{quitIfQueuesAreEmpty()},1000);
+    scanner.startQueueProcessing();
 
 })
