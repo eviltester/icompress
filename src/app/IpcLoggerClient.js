@@ -54,12 +54,15 @@ class IpcLoggerClient{
         ipc.disconnect('world');
     }
 
+    // when sending a message we can add whatever properties we want to it and they
+    // will be received as properties on the data e.g. data.id, data.message, data.logMessage
     logMessage(message){
         this.ipc.of.world.emit(
             'app.message',
             {
                 id      : this.ipc.config.id,
-                message : message
+                message : message,
+                logMessage : true
             }
         );
     }

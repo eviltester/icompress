@@ -326,6 +326,18 @@
         }
     })
 
+    function getLogMessage(messageText){
+        const msg = {}
+        msg.timestamp = Date.now();
+        msg.message = messageText;
+        return msg;
+    }
+
+    ipcRenderer.on("main:stopped-q-processing",(event, message)=>{
+        logMessages([getLogMessage(message)]);
+        stopLoadingSpinner();
+    })
+
     ipcRenderer.on('image-update', (event, anImage)=>{
         document.getElementById("imagedetails").innerHTML=imageUpdateHTML(anImage);
         stopLoadingSpinner();

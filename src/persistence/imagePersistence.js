@@ -9,7 +9,6 @@ const ImageDetails = require("../domain/imageDetails");
 
 /*
     Directory/File Management
-
  */
 
 

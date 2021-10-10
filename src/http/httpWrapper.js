@@ -61,6 +61,7 @@ function downloadFile(fromUrl, toFilePath, forceDownload) {
 
 function promiseToDownloadFile(fromUrl, toFilePath){
     return new Promise((resolve, reject) => {
+        logMessage("Downloading " + fromUrl);
         const fileStream = FS.createWriteStream(toFilePath);
         fetch(fromUrl).
         then((response)=>{
@@ -70,7 +71,8 @@ function promiseToDownloadFile(fromUrl, toFilePath){
             resolve(response)
         }).
         catch((error)=>{
-            console.error('stderr:', error);
+            logMessage("Error Downloading " + fromUrl);
+            logMessage(error);
             reject(error);
         });
     });
@@ -78,7 +80,7 @@ function promiseToDownloadFile(fromUrl, toFilePath){
 
 function getDomFromUrl(url){
 
-    logMessage("Getting "  + url);
+    logMessage("Getting URL  "  + url);
 
     return new Promise((resolve, reject) => {
 
@@ -87,7 +89,7 @@ function getDomFromUrl(url){
         }).then((text)=>{
             resolve(new JSDOM(text))
         }).catch((error)=>{
-            logMessage("could not get " + url);
+            logMessage("could not GET " + url);
             logMessage(error);
             reject(error);
         })
@@ -96,12 +98,14 @@ function getDomFromUrl(url){
 
 function getHeaders(url) {
     return new Promise((resolve, reject) => {
+        logMessage("Checking Headers for URL  "  + url);
         fetch(url, {method: 'HEAD'}).
         then(function(response) {
             //console.log(response.headers);
             resolve(response.headers);
         }).
         catch((error)=>{
+            logMessage("Error Checking Headers for URL  "  + url);
             reject(error);
         });
     });

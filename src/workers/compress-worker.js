@@ -50,7 +50,7 @@ function compressToFolder(inputFile, outputFolder){
             generalProgress('about to compress single file ' + inputImage.getFullFilePath());
             Compress.compressTo(inputImage, outputFolder, true, true).
             then((image) => {
-                generalProgress('compressed ' + fileName);
+                generalProgress('Compressed ' + fileName);
                 //process.exit(0);
                 imageUpdate(image);
                 parentPort.postMessage({done: "Compressed " + inputFile})
@@ -61,7 +61,6 @@ function compressToFolder(inputFile, outputFolder){
             parentPort.postMessage({error: err})
         }
     });
-
 }
 
 

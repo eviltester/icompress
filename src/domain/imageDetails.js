@@ -30,7 +30,7 @@ const ImageStates = new ImageStatesEnum();
 
 class ImageDetails{
 
-    // TODO: investigate the getter/setter shortcut code for JavaScript
+    // making fields private made serialisation and message passing harder
 
     // #state;  // current state of the image processing
     // #states;  // states image has passed through
@@ -52,26 +52,6 @@ class ImageDetails{
         this.src = "";
         this.errorReport = "";
         this.commands= [];
-
-
-        // since the fields are private we need to have a toJSON if we want to use JSON.Stringify
-        // remember we need a fromJSON if we want to deserialize in the future
-        // this.toJSON = function() {
-        //     return {
-        //         state : this.#state,
-        //         states : this.#states,
-        //         src : this.#src,
-        //         foundOnPage : this.#foundOnPage,
-        //         contentLength: this.#contentLength,
-        //         contentType: this.#contentType,
-        //         fullFilePath : this.#fullFilePath,
-        //         fileDirPath : this.#fileDirPath,
-        //         rootFolder : this.#rootFolder,
-        //         fileName : this.#fileName,
-        //         commands: this.#commands,
-        //         errorReport: this.#errorReport,
-        //     };
-        // };
 
     }
 

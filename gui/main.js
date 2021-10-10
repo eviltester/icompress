@@ -34,7 +34,9 @@ const ipc = new Ipc.IPCModule();
 ipc.config.id = 'world';
 ipc.config.retry=1500;
 
-// todo: can messages have other properties e.g. like .id and we add .msgtype? do objects get serialised automatically into message?
+// when sending a message we can add whatever properties we want to it and they
+// will be received as properties on the data e.g. data.id, data.message, data.logMessage
+// objects can be sent as fields and will be deserialised into type of 'object'
 
 ipc.serve(
     function(){
@@ -43,6 +45,7 @@ ipc.serve(
             function(data,socket){
                 ipc.log('ipc got a message from', (data.id), (data.message));
                 console.log('ipc console got a message from', (data.id), (data.message));
+
                 generalProgress(data.message);
                 // ipc.server.emit(
                 //     socket,
@@ -81,6 +84,10 @@ app.whenReady().then(() => {
     })
 })
 
+function stoppedQProcessing(){
+    win.webContents.send('main:stopped-q-processing', "Stopped all Queues");
+}
+
 function generalProgress(event){
 
     let message = event;
@@ -99,6 +106,7 @@ function generalProgress(event){
             }
         }
     }
+    console.log(message);
     win.webContents.send('general-update', message);
 }
 
@@ -192,11 +200,11 @@ function compressionWorker(inputFile, outputFolder){
         })
 
         if(outputFolder===undefined || outputFolder===null) {
-            worker.postMessage({action: "compressInSitu", inputFile: inputFile, port:8080});
+            worker.postMessage({action: "compressInSitu", inputFile: inputFile});
         }else{
             worker.postMessage({action: "compressTo",
                                 inputFile: inputFile,
-                                outputFolder: outputFolder, port:8080});
+                                outputFolder: outputFolder});
         }
 }
 
@@ -257,7 +265,7 @@ const quitIfQueuesAreEmpty = ()=>{
         nothingToDoCount=0;
     }
 
-    console.log("nothing to do " + nothingToDoCount);
+    generalProgress("nothing to do " + nothingToDoCount);
 
     // add a delay before quiting
     // todo: add a config param for TimesToCheckQueueBeforeExiting
@@ -265,9 +273,11 @@ const quitIfQueuesAreEmpty = ()=>{
         console.log("Page Queues");
         console.log("-----------");
         console.log(scanner.getPageQManager().queues().reportOnQueueLengths());
+        generalProgress(scanner.getPageQManager().queues().reportOnQueueLengths())
         console.log("Image Queues");
         console.log("------------");
         console.log(scanner.getImageQManager().queues().reportOnQueueLengths());
+        generalProgress(scanner.getImageQManager().queues().reportOnQueueLengths());
         return;
     }
 
@@ -280,6 +290,7 @@ const quitIfQueuesAreEmpty = ()=>{
         scanner.getImageQManager().outputImageJsonFiles();
         scanner.stopQueueProcessing();
         clearInterval(quitWhenNothingToDoInterval);
+        stoppedQProcessing();
     }
 }
 
