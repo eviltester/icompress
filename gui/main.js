@@ -34,6 +34,18 @@ const ipc = new Ipc.IPCModule();
 ipc.config.id = 'world';
 ipc.config.retry=1500;
 
+
+// TODO: revisit the Event class and create different message types that can be
+// send over ipc and standardised e.g. image update, image details, url status, error, etc.
+
+// TODO: add an sqlLite db, initially managed in a single thread and fed by ipc message updates, then later consider multithreading
+
+// TODO: put the image and url processing and Q processing in separate threads using thread.js
+
+// TODO: add 'type' logs e.g. url, image, log, to expand processing
+
+// TODO: add spidering when threading is done
+
 // when sending a message we can add whatever properties we want to it and they
 // will be received as properties on the data e.g. data.id, data.message, data.logMessage
 // objects can be sent as fields and will be deserialised into type of 'object'
